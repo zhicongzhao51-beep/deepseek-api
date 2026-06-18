@@ -47,6 +47,17 @@ const PROMPTS = Object.freeze({
 - 在开头标注原文大致字数`,
     userTemplate: (input) => `请对以下内容进行摘要：\n\n${input}`,
   },
+
+  chat: {
+    system: `你是一个智能AI助手，能够回答各种问题、提供建议、进行创作和分析。
+规则：
+- 回答准确、有用、安全
+- 如果不知道答案，诚实地说明
+- 保持对话连贯，理解上下文
+- 使用中文回答（除非用户使用其他语言）
+- 避免生成有害、违法或不道德的内容`,
+    userTemplate: (messages) => null, // chat uses raw messages array
+  },
 });
 
 // ── Express App ─────────────────────────────────────────────
@@ -120,6 +131,47 @@ async function callDeepSeek(systemPrompt, userMessage, maxTokens = 2048) {
       // Only capture safe parts of the error body; never log raw secrets
       const errBody = await response.text().catch(() => '<unreadable>');
       logger.error({ status, errBodyLen: errBody.length }, 'DeepSeek API error');
+      throw new Error(`DeepSeek API returned status ${status}`);
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Calls DeepSeek chat API with raw messages array for multi-turn conversation.
+ *
+ * @param {Array<{role: string, content: string}>} messages
+ * @param {number} [maxTokens]
+ * @param {number} [temperature]
+ * @returns {Promise<object>}
+ */
+async function callDeepSeekChat(messages, maxTokens = 2048, temperature = 0.7) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.deepseekTimeoutMs);
+
+  try {
+    const response = await fetch(`${config.deepseekBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.deepseekApiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.deepseekModel,
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const status = response.status;
+      const errBody = await response.text().catch(() => '<unreadable>');
+      logger.error({ status, errBodyLen: errBody.length }, 'DeepSeek API error (chat)');
       throw new Error(`DeepSeek API returned status ${status}`);
     }
 
@@ -294,6 +346,60 @@ app.post('/api/summary',
   requireAuth,
   mw.validate(mw.schemas.aiEndpointSchema),
   (req, res) => handleAiEndpoint(req, res, 'summary')
+);
+
+// Chat endpoint: multi-turn conversation
+app.post('/api/chat',
+  mw.aiLimiter,
+  requireAuth,
+  mw.validate(mw.schemas.chatSchema),
+  async (req, res) => {
+    const { messages, max_tokens, temperature } = req.body;
+
+    try {
+      const result = await callDeepSeekChat(messages, max_tokens, temperature);
+
+      const promptTokens = result.usage?.prompt_tokens || 0;
+      const completionTokens = result.usage?.completion_tokens || 0;
+      const { points } = calculateCost(promptTokens, completionTokens);
+
+      const currentUser = db.getUserByApiKey(req.user.api_key);
+      if (!currentUser || currentUser.balance < points) {
+        return res.status(402).json({
+          success: false,
+          error: `余额不足，本次需要 ${points} 点，当前余额 ${currentUser ? currentUser.balance : 0} 点`,
+        });
+      }
+
+      db.deductBalance(req.user.id, points);
+      db.logUsage(req.user.id, 'chat', promptTokens, completionTokens, points);
+
+      logger.info({
+        userId: req.user.id,
+        endpoint: 'chat',
+        promptTokens,
+        completionTokens,
+        points,
+        requestId: req.requestId,
+      }, 'Chat request completed');
+
+      res.json({
+        success: true,
+        data: {
+          result: result.choices[0]?.message?.content || '',
+          usage: {
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+            points_cost: points,
+            balance_remaining: currentUser.balance - points,
+          },
+        },
+      });
+    } catch (err) {
+      logger.error({ err, endpoint: 'chat', userId: req.user?.id, requestId: req.requestId }, 'Chat endpoint error');
+      res.status(500).json({ success: false, error: 'AI 服务暂时不可用，请稍后重试' });
+    }
+  }
 );
 
 // User info / balance check (rate limited to prevent API key enumeration)

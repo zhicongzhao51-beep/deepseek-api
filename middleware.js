@@ -31,6 +31,15 @@ const createPaymentOrderSchema = z.object({
   package_id: z.string().min(1, '请选择充值套餐'),
 });
 
+const chatSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string().min(1).max(10000),
+  })).min(1).max(50),
+  max_tokens: z.number().int().min(1).max(8192).optional().default(2048),
+  temperature: z.number().min(0).max(2).optional().default(0.7),
+});
+
 // ── Validation Middleware Factory ────────────────────────────
 
 /**
@@ -148,7 +157,7 @@ function requestId(req, _res, next) {
 // ── Exports ─────────────────────────────────────────────────
 
 module.exports = {
-  schemas: { registerSchema, loginSchema, aiEndpointSchema, rechargeSchema, createPaymentOrderSchema },
+  schemas: { registerSchema, loginSchema, aiEndpointSchema, rechargeSchema, createPaymentOrderSchema, chatSchema },
   validate,
   requireApiKey,
   requireAdmin,

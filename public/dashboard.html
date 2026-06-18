@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>用户面板 - DeepSeek API Service</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+  nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1e293b; margin-bottom: 32px; }
+  nav .logo { font-size: 18px; font-weight: 800; }
+  nav .links { display: flex; gap: 16px; }
+  nav .links a { color: #94a3b8; text-decoration: none; font-size: 14px; }
+  nav .links a:hover { color: #e2e8f0; }
+  .login-box { max-width: 420px; margin: 80px auto; }
+  .login-box h2 { margin-bottom: 8px; }
+  .login-box p { color: #94a3b8; margin-bottom: 20px; font-size: 14px; }
+  .login-box input, .login-box button { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 14px; margin-bottom: 12px; }
+  .login-box input:focus { outline: none; border-color: #6366f1; }
+  .login-box button, button { background: #6366f1; border: 1px solid #6366f1; cursor: pointer; font-weight: 600; color: white; padding: 10px 20px; border-radius: 8px; font-size: 14px; }
+  .login-box button:hover, button:hover { background: #5558e6; }
+  button.small { padding: 6px 14px; font-size: 12px; }
+  button.secondary { background: transparent; border-color: #475569; color: #94a3b8; }
+  .hidden { display: none !important; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+  .stat-card .label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; }
+  .stat-card .sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .card h3 { font-size: 16px; margin-bottom: 16px; }
+  .api-key-box { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .api-key-box code { flex: 1; font-family: "Fira Code", monospace; font-size: 13px; color: #6ee7b7; word-break: break-all; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #334155; color: #94a3b8; font-weight: 600; }
+  td { padding: 10px 8px; border-bottom: 1px solid #1e293b; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-green { background: #065f46; color: #6ee7b7; }
+  .badge-yellow { background: #713f12; color: #fcd34d; }
+  .badge-red { background: #7f1d1d; color: #fca5a5; }
+  .quick-start pre { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; font-size: 13px; line-height: 1.6; overflow-x: auto; }
+  .usage-bar { height: 8px; background: #334155; border-radius: 4px; margin-top: 6px; overflow: hidden; }
+  .usage-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+  .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 999; }
+  .toast-success { background: #065f46; color: #6ee7b7; }
+  .toast-error { background: #7f1d1d; color: #fca5a5; }
+  a { color: #6366f1; }
+</style>
+</head>
+<body>
+
+<div id="toastContainer"></div>
+
+<!-- Login -->
+<div class="container" id="loginSection">
+  <div class="login-box">
+    <h2>👤 用户面板</h2>
+    <p>输入 API Key 查看用量和管理账户</p>
+    <input type="text" id="apiKeyInput" placeholder="dsk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">进入面板</button>
+    <p style="color:#64748b;margin-top:16px;font-size:12px">
+      <a href="/recharge">💰 充值</a> · <a href="/docs">📖 文档</a>
+    </p>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div class="container hidden" id="mainContent">
+  <nav>
+    <div class="logo">👤 控制台</div>
+    <div class="links">
+      <a href="/docs">📖 API 文档</a>
+      <a href="/recharge">💰 充值</a>
+      <a href="/">🏠 首页</a>
+      <button class="small secondary" onclick="logout()">退出</button>
+    </div>
+  </nav>
+
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div class="card">
+    <h3>🔑 我的 API Key</h3>
+    <div class="api-key-box">
+      <code id="apiKeyDisplay"></code>
+      <button class="small" onclick="copyKey()">📋 复制</button>
+    </div>
+    <p style="color:#64748b;font-size:12px">⚠️ 请勿泄露 API Key，所有请求需在 Authorization header 中携带</p>
+  </div>
+
+  <div class="card">
+    <h3>⚡ 快速开始</h3>
+    <div class="quick-start">
+<pre># AI 写作
+curl -X POST /api/writer -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <span class="key-placeholder">YOUR_KEY</span>" \
+  -d '{"input":"写一篇关于春天的短文"}'
+
+# 中英翻译
+curl -X POST /api/translator -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <span class="key-placeholder">YOUR_KEY</span>" \
+  -d '{"input":"Hello, world!"}'
+
+# 文本摘要
+curl -X POST /api/summary -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <span class="key-placeholder">YOUR_KEY</span>" \
+  -d '{"input":"需要摘要的长文本..."}'</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📊 用量统计</h3>
+    <table id="usageTable">
+      <thead><tr><th>端点</th><th>调用次数</th><th>输入 Tokens</th><th>输出 Tokens</th><th>消耗点数</th><th>用量占比</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="noUsage" style="color:#64748b;text-align:center;padding:20px;display:none">暂无使用记录</p>
+  </div>
+
+  <div class="card">
+    <h3>💰 最近充值</h3>
+    <table id="orderTable">
+      <thead><tr><th>订单号</th><th>套餐</th><th>金额</th><th>点数</th><th>状态</th><th>时间</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let API_KEY = '';
+let USER = null;
+
+function toast(msg, type) {
+  type = type || 'success';
+  var el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(function() { el.remove(); }, 3000);
+}
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function login() {
+  var key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { toast('请输入 API Key', 'error'); return; }
+  API_KEY = key;
+
+  fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + API_KEY } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        USER = d.data;
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+        render();
+      } else {
+        toast(d.error || '无效的 API Key', 'error');
+      }
+    })
+    .catch(function() { toast('连接失败', 'error'); });
+}
+
+function logout() {
+  API_KEY = ''; USER = null;
+  document.getElementById('loginSection').classList.remove('hidden');
+  document.getElementById('mainContent').classList.add('hidden');
+}
+
+function render() {
+  // Stats
+  var stats = USER.usage_stats || [];
+  var totalCalls = stats.reduce(function(s, u) { return s + (u.calls || 0); }, 0);
+  var totalCost = stats.reduce(function(s, u) { return s + (u.total_cost || 0); }, 0);
+  document.getElementById('statsGrid').innerHTML =
+    '<div class="stat-card"><div class="label">当前余额</div><div class="value" style="color:#6ee7b7">' + USER.balance.toLocaleString() + '</div><div class="sub">点</div></div>' +
+    '<div class="stat-card"><div class="label">总调用次数</div><div class="value">' + totalCalls.toLocaleString() + '</div><div class="sub">次</div></div>' +
+    '<div class="stat-card"><div class="label">累计消耗</div><div class="value" style="color:#f59e0b">' + totalCost.toLocaleString() + '</div><div class="sub">点</div></div>' +
+    '<div class="stat-card"><div class="label">账户名</div><div class="value" style="font-size:22px">' + esc(USER.username) + '</div></div>';
+
+  // API Key
+  document.getElementById('apiKeyDisplay').textContent = API_KEY;
+  var placeholders = document.querySelectorAll('.key-placeholder');
+  for (var i = 0; i < placeholders.length; i++) {
+    placeholders[i].textContent = API_KEY;
+  }
+
+  // Usage table
+  var tbody = document.querySelector('#usageTable tbody');
+  var noUsage = document.getElementById('noUsage');
+  if (!stats.length) {
+    tbody.innerHTML = '';
+    noUsage.style.display = 'block';
+  } else {
+    noUsage.style.display = 'none';
+    var maxCost = Math.max.apply(null, stats.map(function(s) { return s.total_cost; }));
+    var colors = ['#6366f1', '#8b5cf6', '#06b6d4'];
+    tbody.innerHTML = stats.map(function(s, i) {
+      var pct = maxCost > 0 ? (s.total_cost / maxCost * 100) : 0;
+      return '<tr>' +
+        '<td><strong>' + esc(s.endpoint) + '</strong></td>' +
+        '<td>' + (s.calls || 0).toLocaleString() + '</td>' +
+        '<td>' + (s.total_prompt || 0).toLocaleString() + '</td>' +
+        '<td>' + (s.total_completion || 0).toLocaleString() + '</td>' +
+        '<td><strong>' + (s.total_cost || 0) + '</strong></td>' +
+        '<td><div class="usage-bar"><div class="usage-bar-fill" style="width:' + pct + '%;background:' + colors[i % 3] + '"></div></div></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  // Recent orders
+  fetch('/api/payments/orders?limit=5', { headers: { 'Authorization': 'Bearer ' + API_KEY } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.success) return;
+      var orders = d.data.orders;
+      var otbody = document.querySelector('#orderTable tbody');
+      if (!orders.length) {
+        otbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">暂无充值记录</td></tr>';
+        return;
+      }
+      otbody.innerHTML = orders.map(function(o) {
+        var badge = '';
+        switch (o.status) {
+          case 'paid': badge = '<span class="badge badge-green">已支付</span>'; break;
+          case 'pending': badge = '<span class="badge badge-yellow">待支付</span>'; break;
+          case 'failed': badge = '<span class="badge badge-red">失败</span>'; break;
+          default: badge = o.status;
+        }
+        return '<tr><td style="font-family:monospace;font-size:12px">' + esc(o.order_no) + '</td><td>' + esc(o.package_id) + '</td><td>¥' + o.amount + '</td><td>' + o.points.toLocaleString() + '</td><td>' + badge + '</td><td>' + esc(o.created_at) + '</td></tr>';
+      }).join('');
+    });
+}
+
+function copyKey() {
+  navigator.clipboard.writeText(API_KEY).then(function() {
+    toast('API Key 已复制到剪贴板');
+  });
+}
+</script>
+</body>
+</html>
