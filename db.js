@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
+const logger = require('./logger');
 
 const DB_PATH = path.join(__dirname, 'data.db');
 
@@ -37,9 +38,10 @@ async function init() {
       db = new SQL.Database();
     }
 
-    // Enable WAL-like persistence via manual save
-    db.run('PRAGMA journal_mode=OFF');
-    db.run('PRAGMA synchronous=OFF');
+    // Enable WAL mode for crash safety and better concurrency
+    db.run('PRAGMA journal_mode=WAL');
+    db.run('PRAGMA synchronous=NORMAL');
+    db.run('PRAGMA foreign_keys=ON');
 
     // Create tables
     db.run(`
@@ -67,7 +69,7 @@ async function init() {
     `);
 
     saveToDisk();
-    console.log('[DB] Initialized successfully');
+    logger.info('Database initialized successfully');
   })();
 
   return initPromise;

@@ -56,7 +56,6 @@
     <p style="color:#94a3b8;margin-bottom:20px;font-size:14px">输入管理员密码进入</p>
     <input type="password" id="adminPassword" placeholder="管理员密码" onkeydown="if(event.key==='Enter')login()">
     <button onclick="login()">进入</button>
-    <p style="color:#64748b;margin-top:16px;font-size:12px">默认密码: admin888</p>
   </div>
 </div>
 
@@ -123,7 +122,7 @@ function toast(msg, type = 'success') {
 function login() {
   const pw = document.getElementById('adminPassword').value;
   ADMIN_KEY = pw;
-  fetch(`/api/admin/stats?admin_key=${pw}`)
+  fetch('/api/admin/stats', { headers: { 'x-admin-key': pw } })
     .then(r => r.json())
     .then(data => {
       if (data.success) {
@@ -140,7 +139,7 @@ function login() {
 }
 
 function refreshData() {
-  fetch(`/api/admin/stats?admin_key=${ADMIN_KEY}`)
+  fetch('/api/admin/stats', { headers: { 'x-admin-key': ADMIN_KEY } })
     .then(r => r.json())
     .then(data => {
       if (data.success) {
@@ -203,9 +202,9 @@ function recharge() {
     return;
   }
 
-  fetch(`/api/admin/recharge?admin_key=${ADMIN_KEY}`, {
+  fetch('/api/admin/recharge', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
     body: JSON.stringify({ username, points }),
   })
     .then(r => r.json())

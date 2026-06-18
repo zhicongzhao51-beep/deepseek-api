@@ -1,16 +1,18 @@
+'use strict';
+
 require('dotenv').config();
 const express = require('express');
-const db = require('./db');
+const helmet = require('helmet');
 const path = require('path');
 
-const PORT = process.env.PORT || 3456;
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
-const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
+const config = require('./config');
+const logger = require('./logger');
+const db = require('./db');
+const mw = require('./middleware');
 
-// --- Prompt Templates ---
+// ── Prompt Templates ────────────────────────────────────────
 
-const PROMPTS = {
+const PROMPTS = Object.freeze({
   writer: {
     system: `你是一位资深的中文内容创作者，擅长各类文体写作（文章、营销文案、社交媒体内容、邮件、演讲稿等）。
 写作规则：
@@ -45,161 +47,200 @@ const PROMPTS = {
 - 在开头标注原文大致字数`,
     userTemplate: (input) => `请对以下内容进行摘要：\n\n${input}`,
   },
-};
+});
 
-// --- Express App ---
+// ── Express App ─────────────────────────────────────────────
 
 const app = express();
-app.use(express.json());
+
+// Security headers (helmet) — permissive CSP for admin panel inline scripts
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      'default-src': ["'self'"],
+      'script-src': ["'self'", "'unsafe-inline'"],
+      'script-src-attr': ["'unsafe-inline'"],
+      'style-src': ["'self'", "'unsafe-inline'"],
+    },
+  },
+}));
+
+// Request ID for log correlation
+app.use(mw.requestId);
+
+// Body parsing with size limit
+app.use(express.json({ limit: config.maxBodySize }));
+
+// Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- Auth Middleware ---
+// ── DeepSeek API Call ───────────────────────────────────────
 
-function requireApiKey(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, error: '缺少 API Key，请在 Authorization header 中使用 Bearer <your-api-key>' });
-  }
-
-  const apiKey = authHeader.slice(7);
-  const user = db.getUserByApiKey(apiKey);
-  if (!user) {
-    return res.status(401).json({ success: false, error: '无效的 API Key' });
-  }
-
-  if (user.balance <= 0) {
-    return res.status(402).json({ success: false, error: '余额不足，请充值后继续使用' });
-  }
-
-  req.user = user;
-  next();
-}
-
-// --- DeepSeek API Call ---
-
+/**
+ * Calls the DeepSeek chat completions API.
+ * Full error details are logged internally; only a generic message is thrown.
+ *
+ * @param {string} systemPrompt
+ * @param {string} userMessage
+ * @param {number} [maxTokens]
+ * @returns {Promise<object>}
+ */
 async function callDeepSeek(systemPrompt, userMessage, maxTokens = 2048) {
-  const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: DEEPSEEK_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      max_tokens: maxTokens,
-      temperature: 0.7,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.deepseekTimeoutMs);
 
-  if (!response.ok) {
-    const errBody = await response.text();
-    throw new Error(`DeepSeek API error (${response.status}): ${errBody}`);
+  try {
+    const response = await fetch(`${config.deepseekBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.deepseekApiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.deepseekModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+        max_tokens: maxTokens,
+        temperature: 0.7,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const status = response.status;
+      // Only capture safe parts of the error body; never log raw secrets
+      const errBody = await response.text().catch(() => '<unreadable>');
+      logger.error({ status, errBodyLen: errBody.length }, 'DeepSeek API error');
+      throw new Error(`DeepSeek API returned status ${status}`);
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return response.json();
 }
 
-// --- Cost Calculation ---
+// ── Cost Calculation ────────────────────────────────────────
 
-// DeepSeek pricing: input ¥1/M tokens, output ¥2/M tokens
-// We charge 1 point per 1000 output chars (~1500 output tokens)
-// 1 point ≈ ¥0.01 worth of DeepSeek cost, user pays ¥0.10
+/**
+ * DeepSeek pricing: input ¥1/M tokens, output ¥2/M tokens.
+ * We charge 1 point per ¥0.01 worth of DeepSeek cost (10x markup).
+ *
+ * @param {number} promptTokens
+ * @param {number} completionTokens
+ * @returns {{ totalCostYuan: number, points: number }}
+ */
 function calculateCost(promptTokens, completionTokens) {
-  const inputCost = (promptTokens / 1_000_000) * 1;   // ¥
-  const outputCost = (completionTokens / 1_000_000) * 2; // ¥
+  const inputCost = (promptTokens / 1_000_000) * 1;
+  const outputCost = (completionTokens / 1_000_000) * 2;
   const totalCostYuan = inputCost + outputCost;
-
-  // Charge minimum 1 point, or 1 point per ¥0.01 cost (10x markup)
   const points = Math.max(1, Math.ceil(totalCostYuan * 100));
   return { totalCostYuan, points };
 }
 
-// --- API Routes ---
+// ── Routes: Public ──────────────────────────────────────────
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ success: true, message: 'DeepSeek API Service is running' });
 });
 
-// User registration (admin or self-service)
-app.post('/api/register', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ success: false, error: '请提供 username 和 password' });
+// User registration
+app.post('/api/register',
+  mw.authLimiter,
+  mw.validate(mw.schemas.registerSchema),
+  (req, res) => {
+    const { username, password } = req.body; // already validated
+
+    const result = db.createUser(username, password);
+    if (result.error) {
+      return res.status(409).json({ success: false, error: result.error });
+    }
+
+    logger.info({ username, requestId: req.requestId }, 'New user registered');
+
+    res.json({
+      success: true,
+      message: '注册成功！新用户赠送100点数',
+      data: {
+        username: result.username,
+        api_key: result.api_key,
+        balance: result.balance,
+        usage: `在 Authorization header 中使用: Bearer ${result.api_key}`,
+      },
+    });
   }
-  if (username.length < 3 || password.length < 6) {
-    return res.status(400).json({ success: false, error: '用户名至少3个字符，密码至少6个字符' });
+);
+
+// User login
+app.post('/api/login',
+  mw.authLimiter,
+  mw.validate(mw.schemas.loginSchema),
+  (req, res) => {
+    const { username, password } = req.body;
+
+    const user = db.authenticateUser(username, password);
+    if (!user) {
+      return res.status(401).json({ success: false, error: '用户名或密码错误' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        username: user.username,
+        api_key: user.api_key,
+        balance: user.balance,
+      },
+    });
   }
+);
 
-  const result = db.createUser(username, password);
-  if (result.error) {
-    return res.status(409).json({ success: false, error: result.error });
-  }
+// ── Routes: Authenticated (API Key) ─────────────────────────
 
-  res.json({
-    success: true,
-    message: '注册成功！新用户赠送100点数',
-    data: {
-      username: result.username,
-      api_key: result.api_key,
-      balance: result.balance,
-      usage: `在 Authorization header 中使用: Bearer ${result.api_key}`,
-    },
-  });
-});
+const requireAuth = mw.requireApiKey({ getUserByApiKey: db.getUserByApiKey });
 
-// Login
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ success: false, error: '请提供 username 和 password' });
-  }
-
-  const user = db.authenticateUser(username, password);
-  if (!user) {
-    return res.status(401).json({ success: false, error: '用户名或密码错误' });
-  }
-
-  res.json({
-    success: true,
-    data: {
-      username: user.username,
-      api_key: user.api_key,
-      balance: user.balance,
-    },
-  });
-});
-
-// Generic AI endpoint
+/**
+ * Generic handler for AI endpoints (writer, translator, summary).
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {'writer'|'translator'|'summary'} promptKey
+ */
 async function handleAiEndpoint(req, res, promptKey) {
-  const { input, max_tokens } = req.body;
-  if (!input || typeof input !== 'string') {
-    return res.status(400).json({ success: false, error: '请提供 input 字段（字符串）' });
-  }
+  const { input, max_tokens } = req.body; // validated
 
   const prompt = PROMPTS[promptKey];
   const userMessage = prompt.userTemplate(input);
 
   try {
-    const result = await callDeepSeek(prompt.system, userMessage, max_tokens || 2048);
+    const result = await callDeepSeek(prompt.system, userMessage, max_tokens);
 
     const promptTokens = result.usage?.prompt_tokens || 0;
     const completionTokens = result.usage?.completion_tokens || 0;
     const { points } = calculateCost(promptTokens, completionTokens);
 
-    // Check balance
+    // Re-fetch user to get latest balance
     const currentUser = db.getUserByApiKey(req.user.api_key);
-    if (currentUser.balance < points) {
-      return res.status(402).json({ success: false, error: `余额不足，本次需要 ${points} 点，当前余额 ${currentUser.balance} 点` });
+    if (!currentUser || currentUser.balance < points) {
+      return res.status(402).json({
+        success: false,
+        error: `余额不足，本次需要 ${points} 点，当前余额 ${currentUser ? currentUser.balance : 0} 点`,
+      });
     }
 
-    // Deduct and log
     db.deductBalance(req.user.id, points);
     db.logUsage(req.user.id, promptKey, promptTokens, completionTokens, points);
+
+    logger.info({
+      userId: req.user.id,
+      endpoint: promptKey,
+      promptTokens,
+      completionTokens,
+      points,
+      requestId: req.requestId,
+    }, 'AI request completed');
 
     res.json({
       success: true,
@@ -214,17 +255,42 @@ async function handleAiEndpoint(req, res, promptKey) {
       },
     });
   } catch (err) {
-    console.error(`[${promptKey}]`, err.message);
-    res.status(500).json({ success: false, error: 'AI 服务暂时不可用，请稍后重试' });
+    logger.error({
+      err,
+      endpoint: promptKey,
+      userId: req.user?.id,
+      requestId: req.requestId,
+    }, 'AI endpoint error');
+    res.status(500).json({
+      success: false,
+      error: 'AI 服务暂时不可用，请稍后重试',
+    });
   }
 }
 
-app.post('/api/writer', requireApiKey, (req, res) => handleAiEndpoint(req, res, 'writer'));
-app.post('/api/translator', requireApiKey, (req, res) => handleAiEndpoint(req, res, 'translator'));
-app.post('/api/summary', requireApiKey, (req, res) => handleAiEndpoint(req, res, 'summary'));
+app.post('/api/writer',
+  mw.aiLimiter,
+  requireAuth,
+  mw.validate(mw.schemas.aiEndpointSchema),
+  (req, res) => handleAiEndpoint(req, res, 'writer')
+);
 
-// User info / balance check
-app.get('/api/me', requireApiKey, (req, res) => {
+app.post('/api/translator',
+  mw.aiLimiter,
+  requireAuth,
+  mw.validate(mw.schemas.aiEndpointSchema),
+  (req, res) => handleAiEndpoint(req, res, 'translator')
+);
+
+app.post('/api/summary',
+  mw.aiLimiter,
+  requireAuth,
+  mw.validate(mw.schemas.aiEndpointSchema),
+  (req, res) => handleAiEndpoint(req, res, 'summary')
+);
+
+// User info / balance check (rate limited to prevent API key enumeration)
+app.get('/api/me', mw.authLimiter, requireAuth, (req, res) => {
   const stats = db.getUsageStats(req.user.id);
   res.json({
     success: true,
@@ -236,19 +302,10 @@ app.get('/api/me', requireApiKey, (req, res) => {
   });
 });
 
-// --- Admin Routes ---
+// ── Routes: Admin ───────────────────────────────────────────
 
-const ADMIN_PASSWORD = 'admin888';
-
-function requireAdmin(req, res, next) {
-  const key = req.headers['x-admin-key'] || req.query.admin_key;
-  if (key !== ADMIN_PASSWORD) {
-    return res.status(403).json({ success: false, error: '管理员密码错误' });
-  }
-  next();
-}
-
-app.get('/api/admin/stats', requireAdmin, (req, res) => {
+// Admin stats (header-based auth only, rate limited before auth to prevent brute force)
+app.get('/api/admin/stats', mw.adminLimiter, mw.requireAdmin, (_req, res) => {
   const users = db.getAllUsers();
   const stats = db.getUsageStats();
   res.json({
@@ -257,40 +314,58 @@ app.get('/api/admin/stats', requireAdmin, (req, res) => {
   });
 });
 
-app.post('/api/admin/recharge', requireAdmin, (req, res) => {
-  const { username, points } = req.body;
-  if (!username || !points || points <= 0) {
-    return res.status(400).json({ success: false, error: '请提供 username 和 points（正整数）' });
-  }
+// Admin recharge (header-based auth only, rate limited before auth)
+app.post('/api/admin/recharge',
+  mw.adminLimiter,
+  mw.requireAdmin,
+  mw.validate(mw.schemas.rechargeSchema),
+  (req, res) => {
+    const { username, points } = req.body;
 
-  const user = db.getUserByUsername(username);
-  if (!user) {
-    return res.status(404).json({ success: false, error: '用户不存在' });
-  }
+    const user = db.getUserByUsername(username);
+    if (!user) {
+      return res.status(404).json({ success: false, error: '用户不存在' });
+    }
 
-  db.addBalance(user.id, points);
-  const updatedUser = db.getUserByApiKey(user.api_key);
-  res.json({
-    success: true,
-    message: `已为 ${username} 充值 ${points} 点`,
-    data: { username, balance_after: updatedUser.balance },
+    db.addBalance(user.id, points);
+    const updatedUser = db.getUserByApiKey(user.api_key);
+
+    logger.info({
+      adminAction: 'recharge',
+      targetUser: username,
+      points,
+      requestId: req.requestId,
+    }, 'Admin recharge');
+
+    res.json({
+      success: true,
+      message: `已为 ${username} 充值 ${points} 点`,
+      data: { username, balance_after: updatedUser.balance },
+    });
+  }
+);
+
+// ── Global Error Handler ────────────────────────────────────
+
+app.use((err, _req, res, _next) => {
+  logger.error({ err }, 'Unhandled error');
+  res.status(500).json({
+    success: false,
+    error: '服务器内部错误，请稍后重试',
   });
 });
 
-// --- Start Server ---
+// ── Start Server ────────────────────────────────────────────
 
 db.init().then(() => {
-  app.listen(PORT, () => {
-    console.log(`
-╔══════════════════════════════════════════════╗
-║   🚀 DeepSeek API Service v1.0             ║
-║   服务地址: http://localhost:${PORT}          ║
-║   管理面板: http://localhost:${PORT}/admin   ║
-║   健康检查: http://localhost:${PORT}/api/health ║
-╚══════════════════════════════════════════════╝
-    `);
+  app.listen(config.port, () => {
+    logger.info({
+      port: config.port,
+      env: config.nodeEnv,
+      adminPanel: `http://localhost:${config.port}/admin`,
+    }, 'DeepSeek API Service started');
   });
-}).catch(err => {
-  console.error('Failed to initialize database:', err);
+}).catch((err) => {
+  logger.fatal({ err }, 'Failed to initialize database');
   process.exit(1);
 });
