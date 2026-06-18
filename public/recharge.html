@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线充值 - DeepSeek API Service</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  .container { max-width: 960px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 24px; margin-bottom: 8px; }
+  .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .card h2 { font-size: 18px; margin-bottom: 16px; color: #f1f5f9; }
+  .login-box { max-width: 420px; margin: 40px auto; }
+  .login-box input, .login-box button { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 14px; margin-bottom: 12px; }
+  .login-box input:focus { outline: none; border-color: #6366f1; }
+  .login-box button, button { background: #6366f1; border: 1px solid #6366f1; cursor: pointer; font-weight: 600; color: white; padding: 10px 20px; border-radius: 8px; font-size: 14px; }
+  .login-box button:hover, button:hover { background: #5558e6; }
+  button.secondary { background: transparent; border-color: #475569; color: #94a3b8; }
+  .hidden { display: none !important; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-green { background: #065f46; color: #6ee7b7; }
+  .badge-yellow { background: #713f12; color: #fcd34d; }
+  .badge-blue { background: #1e3a5f; color: #93c5fd; }
+  .badge-red { background: #7f1d1d; color: #fca5a5; }
+  .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .balance-display { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 20px; display: inline-flex; align-items: center; gap: 8px; }
+  .balance-display .label { font-size: 13px; color: #94a3b8; }
+  .balance-display .value { font-size: 24px; font-weight: 700; color: #6ee7b7; }
+  .packages-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+  .package-card { background: #0f172a; border: 2px solid #334155; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .package-card:hover { border-color: #6366f1; transform: translateY(-2px); }
+  .package-card.selected { border-color: #6366f1; background: #1e1b4b; box-shadow: 0 0 16px rgba(99,102,241,.3); }
+  .package-card .name { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .package-card .price { font-size: 28px; font-weight: 700; color: #6366f1; margin-bottom: 4px; }
+  .package-card .price span { font-size: 14px; color: #94a3b8; }
+  .package-card .points { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
+  .package-card .bonus { font-size: 12px; color: #f59e0b; }
+  .qr-section { text-align: center; padding: 30px; }
+  .qr-section img { border: 12px solid white; border-radius: 12px; margin-bottom: 16px; width: 220px; height: 220px; }
+  .qr-section .amount { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .qr-section .hint { color: #94a3b8; font-size: 13px; margin-bottom: 16px; }
+  .order-info { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; display: inline-block; text-align: left; margin-bottom: 16px; }
+  .order-info div { font-size: 13px; color: #94a3b8; line-height: 1.8; }
+  .order-info span { color: #e2e8f0; font-family: monospace; }
+  .paid-section { text-align: center; padding: 30px; }
+  .paid-section .icon { font-size: 64px; margin-bottom: 16px; }
+  .paid-section .msg { font-size: 20px; font-weight: 700; color: #6ee7b7; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #334155; color: #94a3b8; font-weight: 600; }
+  td { padding: 10px 8px; border-bottom: 1px solid #1e293b; }
+  tr:hover td { background: #33415522; }
+  .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 999; animation: slideIn 0.3s ease; }
+  .toast-success { background: #065f46; color: #6ee7b7; }
+  .toast-error { background: #7f1d1d; color: #fca5a5; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab { padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; color: #94a3b8; border: 1px solid transparent; }
+  .tab.active { background: #6366f1; color: white; }
+  a { color: #6366f1; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toastContainer"></div>
+
+<!-- Login Overlay -->
+<div class="container" id="loginSection">
+  <div class="login-box card">
+    <h2>🔐 输入 API Key</h2>
+    <p style="color:#94a3b8;margin-bottom:20px;font-size:14px">输入您的 API Key 查看余额并充值</p>
+    <input type="text" id="apiKeyInput" placeholder="dsk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">进入</button>
+    <p style="color:#64748b;margin-top:16px;font-size:12px">
+      还没有账号？<a href="/">注册账号</a>
+    </p>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="container hidden" id="mainContent">
+  <div class="header-bar">
+    <div>
+      <h1>💰 在线充值</h1>
+      <p class="subtitle">选择套餐，扫码支付，点数自动到账</p>
+    </div>
+    <div class="balance-display">
+      <span class="label">当前余额</span>
+      <span class="value" id="balanceDisplay">0</span>
+      <span class="label">点</span>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('recharge')">💳 充值</div>
+    <div class="tab" onclick="switchTab('history')">📋 充值记录</div>
+  </div>
+
+  <!-- Recharge Tab -->
+  <div id="tabRecharge">
+    <div id="stepPackages">
+      <div class="card">
+        <h2>📦 选择充值套餐</h2>
+        <div class="packages-grid" id="packagesGrid"></div>
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <button id="payBtn" disabled onclick="startPayment()">💳 立即支付</button>
+      </div>
+    </div>
+
+    <div id="stepPayment" class="hidden">
+      <div class="card">
+        <h2>📱 扫码支付</h2>
+        <div class="qr-section">
+          <div class="amount" id="payAmount"></div>
+          <div class="hint">使用微信或支付宝扫码支付</div>
+          <img id="qrImage" src="" alt="支付二维码">
+          <div class="hint">扫码后请等待自动确认</div>
+          <div class="order-info">
+            <div>订单号: <span id="orderNoDisplay"></span></div>
+            <div>套餐: <span id="orderPackage"></span></div>
+            <div>金额: <span id="orderAmount"></span></div>
+            <div>状态: <span id="orderStatus"></span></div>
+          </div>
+          <button class="secondary" onclick="cancelPayment()">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="stepPaid" class="hidden">
+      <div class="card">
+        <div class="paid-section">
+          <div class="icon">✅</div>
+          <div class="msg">支付成功！点数已到账</div>
+          <p style="color:#94a3b8;margin-bottom:16px" id="paidDetail"></p>
+          <button onclick="resetToPackages()">继续充值</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Tab -->
+  <div id="tabHistory" class="hidden">
+    <div class="card">
+      <h2>📋 充值记录</h2>
+      <table id="historyTable">
+        <thead><tr><th>订单号</th><th>套餐</th><th>金额(元)</th><th>点数</th><th>赠送</th><th>状态</th><th>时间</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let API_KEY = '';
+let USER = null;
+let selectedPackageId = null;
+let currentOrderNo = null;
+let pollTimer = null;
+let packages = [];
+
+function toast(msg, type) {
+  type = type || 'success';
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(function() { el.remove(); }, 3000);
+}
+
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+// ── Login ──
+
+function login() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { toast('请输入 API Key', 'error'); return; }
+  API_KEY = key;
+
+  fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + API_KEY } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        USER = data.data;
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+        document.getElementById('balanceDisplay').textContent = data.data.balance;
+        loadPackages();
+        loadHistory();
+      } else {
+        toast(data.error || '无效的 API Key', 'error');
+      }
+    })
+    .catch(function() { toast('连接失败，请检查服务是否启动', 'error'); });
+}
+
+// ── Packages ──
+
+function loadPackages() {
+  fetch('/api/payments/packages')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        packages = data.data.packages;
+        renderPackages(data.data.packages);
+      }
+    });
+}
+
+function renderPackages(pkgs) {
+  var html = '';
+  pkgs.forEach(function(p) {
+    html += '<div class="package-card' + (p.id === selectedPackageId ? ' selected' : '') + '" onclick="selectPackage(\'' + p.id + '\')">';
+    html += '<div class="name">' + esc(p.label) + '</div>';
+    html += '<div class="price">¥' + p.amount + ' <span>CNY</span></div>';
+    html += '<div class="points">🪙 ' + p.points.toLocaleString() + ' 点</div>';
+    if (p.bonus > 0) {
+      html += '<div class="bonus">🎁 赠送 ' + p.bonus.toLocaleString() + ' 点</div>';
+    }
+    html += '</div>';
+  });
+  document.getElementById('packagesGrid').innerHTML = html;
+}
+
+function selectPackage(id) {
+  selectedPackageId = id;
+  document.getElementById('payBtn').disabled = false;
+  // Update visual selection
+  var cards = document.querySelectorAll('.package-card');
+  cards.forEach(function(c) { c.classList.remove('selected'); });
+  var selected = document.querySelector('.package-card[onclick*="' + id + '"]');
+  if (selected) selected.classList.add('selected');
+}
+
+// ── Payment Flow ──
+
+function startPayment() {
+  if (!selectedPackageId) { toast('请先选择套餐', 'error'); return; }
+
+  document.getElementById('payBtn').disabled = true;
+
+  fetch('/api/payments/create-order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+    body: JSON.stringify({ package_id: selectedPackageId }),
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        currentOrderNo = data.data.order_no;
+        document.getElementById('stepPackages').classList.add('hidden');
+        document.getElementById('stepPayment').classList.remove('hidden');
+        document.getElementById('payAmount').textContent = '¥' + data.data.amount + ' CNY';
+        document.getElementById('qrImage').src = data.data.qr_url;
+        document.getElementById('orderNoDisplay').textContent = data.data.order_no;
+        document.getElementById('orderPackage').textContent = data.data.package_label;
+        document.getElementById('orderAmount').textContent = '¥' + data.data.amount + ' (' + data.data.points.toLocaleString() + '点' + (data.data.bonus_points > 0 ? ' + 赠' + data.data.bonus_points.toLocaleString() + '点' : '') + ')';
+        document.getElementById('orderStatus').innerHTML = '<span class="badge badge-yellow">等待支付</span>';
+        startPolling();
+      } else {
+        toast(data.error || '创建订单失败', 'error');
+        document.getElementById('payBtn').disabled = false;
+      }
+    })
+    .catch(function(err) { toast('网络错误: ' + err.message, 'error'); document.getElementById('payBtn').disabled = false; });
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollOrderStatus, 3000);
+}
+
+function pollOrderStatus() {
+  if (!currentOrderNo) return;
+
+  fetch('/api/payments/order/' + currentOrderNo, { headers: { 'Authorization': 'Bearer ' + API_KEY } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success) return;
+
+      if (data.data.status === 'paid') {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        document.getElementById('stepPayment').classList.add('hidden');
+        document.getElementById('stepPaid').classList.remove('hidden');
+
+        // Update balance
+        var newBalance = data.data.points + (data.data.bonus_points || 0);
+        fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + API_KEY } })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (d.success) {
+              document.getElementById('balanceDisplay').textContent = d.data.balance;
+              document.getElementById('paidDetail').textContent = '获得 ' + data.data.points.toLocaleString() + ' 点' + (data.data.bonus_points > 0 ? ' (+ ' + data.data.bonus_points.toLocaleString() + ' 赠送)' : '') + '，当前余额: ' + d.data.balance.toLocaleString() + ' 点';
+            }
+          });
+
+        loadHistory();
+      }
+    });
+}
+
+function cancelPayment() {
+  clearInterval(pollTimer);
+  pollTimer = null;
+  currentOrderNo = null;
+  resetToPackages();
+}
+
+function resetToPackages() {
+  document.getElementById('stepPayment').classList.add('hidden');
+  document.getElementById('stepPaid').classList.add('hidden');
+  document.getElementById('stepPackages').classList.remove('hidden');
+  document.getElementById('payBtn').disabled = !selectedPackageId;
+}
+
+// ── Order History ──
+
+function loadHistory() {
+  fetch('/api/payments/orders?limit=50', { headers: { 'Authorization': 'Bearer ' + API_KEY } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) renderHistory(data.data.orders);
+    });
+}
+
+function renderHistory(orders) {
+  var tbody = document.querySelector('#historyTable tbody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:40px">暂无充值记录</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(function(o) {
+    var statusBadge = '';
+    switch (o.status) {
+      case 'paid': statusBadge = '<span class="badge badge-green">已支付</span>'; break;
+      case 'pending': statusBadge = '<span class="badge badge-yellow">待支付</span>'; break;
+      case 'failed': statusBadge = '<span class="badge badge-red">失败</span>'; break;
+      case 'expired': statusBadge = '<span class="badge badge-red">已过期</span>'; break;
+      default: statusBadge = '<span class="badge badge-blue">' + esc(o.status) + '</span>';
+    }
+    return '<tr>' +
+      '<td><span style="font-family:monospace;font-size:12px">' + esc(o.order_no) + '</span></td>' +
+      '<td>' + esc(o.package_id) + '</td>' +
+      '<td>¥' + o.amount + '</td>' +
+      '<td>' + o.points.toLocaleString() + '</td>' +
+      '<td>' + (o.bonus_points > 0 ? '<span style="color:#f59e0b">+' + o.bonus_points.toLocaleString() + '</span>' : '-') + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td>' + esc(o.created_at) + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+// ── Tab Switching ──
+
+function switchTab(tab) {
+  var tabs = document.querySelectorAll('.tab');
+  tabs.forEach(function(t) { t.classList.remove('active'); });
+  if (tab === 'recharge') {
+    tabs[0].classList.add('active');
+    document.getElementById('tabRecharge').classList.remove('hidden');
+    document.getElementById('tabHistory').classList.add('hidden');
+  } else {
+    tabs[1].classList.add('active');
+    document.getElementById('tabRecharge').classList.add('hidden');
+    document.getElementById('tabHistory').classList.remove('hidden');
+    loadHistory();
+  }
+}
+</script>
+</body>
+</html>

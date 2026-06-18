@@ -27,6 +27,10 @@ const rechargeSchema = z.object({
   points: z.number().int().min(1, '点数必须为正整数').max(1000000, '单次充值不能超过100万点'),
 });
 
+const createPaymentOrderSchema = z.object({
+  package_id: z.string().min(1, '请选择充值套餐'),
+});
+
 // ── Validation Middleware Factory ────────────────────────────
 
 /**
@@ -144,7 +148,7 @@ function requestId(req, _res, next) {
 // ── Exports ─────────────────────────────────────────────────
 
 module.exports = {
-  schemas: { registerSchema, loginSchema, aiEndpointSchema, rechargeSchema },
+  schemas: { registerSchema, loginSchema, aiEndpointSchema, rechargeSchema, createPaymentOrderSchema },
   validate,
   requireApiKey,
   requireAdmin,

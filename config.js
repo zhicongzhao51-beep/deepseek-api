@@ -47,6 +47,23 @@ const config = Object.freeze({
 
   // DeepSeek API timeout (ms)
   deepseekTimeoutMs: parseInt(optional('DEEPSEEK_TIMEOUT_MS', '30000'), 10),
+
+  // XorPay
+  xorpayAppId: optional('XORPAY_APP_ID', ''),
+  xorpayAppSecret: optional('XORPAY_APP_SECRET', ''),
+  xorpayNotifyUrl: optional('XORPAY_NOTIFY_URL', ''),
+
+  // Points packages (JSON string)
+  pointsPackages: JSON.parse(optional('POINTS_PACKAGES', JSON.stringify([
+    { id: 'basic',    label: '基础包',  amount: 10,   points: 1000,  bonus: 0    },
+    { id: 'starter',  label: '入门包',  amount: 50,   points: 5000,  bonus: 500  },
+    { id: 'popular',  label: '人气包',  amount: 100,  points: 10000, bonus: 2000 },
+    { id: 'pro',      label: '专业包',  amount: 200,  points: 20000, bonus: 5000 },
+    { id: 'ultimate', label: '企业包',  amount: 500,  points: 50000, bonus: 15000},
+  ]))),
+
+  // Payment order expiry (minutes)
+  paymentOrderExpiryMinutes: parseInt(optional('PAYMENT_ORDER_EXPIRY_MINUTES', '30'), 10),
 });
 
 module.exports = config;

@@ -68,11 +68,18 @@ app.use(helmet({
 // Request ID for log correlation
 app.use(mw.requestId);
 
-// Body parsing with size limit
-app.use(express.json({ limit: config.maxBodySize }));
+// Body parsing with size limit + raw body capture for payment webhook verification
+app.use(express.json({
+  limit: config.maxBodySize,
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+}));
 
-// Static files
-app.use(express.static(path.join(__dirname, 'public')));
+// Static files (support extensionless .html access like /recharge, /admin)
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+
+// Payment routes (mounted before main routes for webhook priority)
+const paymentRoutes = require('./routes/payments');
+app.use('/api/payments', paymentRoutes);
 
 // ── DeepSeek API Call ───────────────────────────────────────
 

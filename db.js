@@ -68,6 +68,24 @@ async function init() {
       )
     `);
 
+    db.run(`
+      CREATE TABLE IF NOT EXISTS payment_orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        order_no TEXT UNIQUE NOT NULL,
+        package_id TEXT NOT NULL,
+        amount REAL NOT NULL,
+        points INTEGER NOT NULL,
+        bonus_points INTEGER NOT NULL DEFAULT 0,
+        provider TEXT NOT NULL DEFAULT 'xorpay',
+        provider_charge_id TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        paid_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
     saveToDisk();
     logger.info('Database initialized successfully');
   })();
@@ -190,6 +208,70 @@ function getAllUsers() {
   });
 }
 
+// --- Payment operations ---
+
+function createPaymentOrder(userId, packageInfo, orderNo) {
+  const d = getDb();
+  d.run(
+    `INSERT INTO payment_orders (user_id, order_no, package_id, amount, points, bonus_points, provider)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [userId, orderNo, packageInfo.id, packageInfo.amount, packageInfo.points, packageInfo.bonus || 0, 'xorpay']
+  );
+  saveToDisk();
+  return { id: d.exec('SELECT last_insert_rowid()')[0].values[0][0], orderNo };
+}
+
+function getPaymentOrder(orderNo) {
+  const d = getDb();
+  const result = d.exec(
+    'SELECT id, user_id, order_no, package_id, amount, points, bonus_points, provider, provider_charge_id, status, paid_at, created_at FROM payment_orders WHERE order_no = ?',
+    [orderNo]
+  );
+  if (result.length === 0 || result[0].values.length === 0) return null;
+  const cols = result[0].columns;
+  const row = result[0].values[0];
+  const obj = {};
+  cols.forEach((col, i) => (obj[col] = row[i]));
+  return obj;
+}
+
+function completePaymentOrder(orderNo, providerChargeId) {
+  const d = getDb();
+  // Idempotent: only complete if still pending
+  const result = d.exec(
+    `UPDATE payment_orders SET status = 'paid', provider_charge_id = ?, paid_at = datetime('now')
+     WHERE order_no = ? AND status = 'pending'`,
+    [providerChargeId, orderNo]
+  );
+  saveToDisk();
+  // Return affected row count
+  return d.exec('SELECT changes()')[0].values[0][0] > 0;
+}
+
+function failPaymentOrder(orderNo) {
+  const d = getDb();
+  d.run(
+    `UPDATE payment_orders SET status = 'failed' WHERE order_no = ? AND status = 'pending'`,
+    [orderNo]
+  );
+  saveToDisk();
+}
+
+function getUserPaymentOrders(userId, limit = 20, offset = 0) {
+  const d = getDb();
+  const result = d.exec(
+    'SELECT order_no, package_id, amount, points, bonus_points, provider, status, paid_at, created_at FROM payment_orders WHERE user_id = ? ORDER BY id DESC LIMIT ? OFFSET ?',
+    [userId, limit, offset]
+  );
+  if (result.length === 0) return [];
+  const cols = result[0].columns;
+  return result[0].values.map(row => {
+    const obj = {};
+    cols.forEach((col, i) => (obj[col] = row[i]));
+    return obj;
+  });
+}
+
 module.exports = {
   init,
   createUser,
@@ -201,4 +283,9 @@ module.exports = {
   logUsage,
   getUsageStats,
   getAllUsers,
+  createPaymentOrder,
+  getPaymentOrder,
+  completePaymentOrder,
+  failPaymentOrder,
+  getUserPaymentOrders,
 };
