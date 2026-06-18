@@ -362,16 +362,21 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-// ── Start Server ────────────────────────────────────────────
+// ── Export & Start ───────────────────────────────────────────
 
+module.exports = app;
+
+// Always init the database, then start if running as main module
 db.init().then(() => {
-  app.listen(config.port, () => {
-    logger.info({
-      port: config.port,
-      env: config.nodeEnv,
-      adminPanel: `http://localhost:${config.port}/admin`,
-    }, 'DeepSeek API Service started');
-  });
+  if (require.main === module) {
+    app.listen(config.port, () => {
+      logger.info({
+        port: config.port,
+        env: config.nodeEnv,
+        adminPanel: `http://localhost:${config.port}/admin`,
+      }, 'DeepSeek API Service started');
+    });
+  }
 }).catch((err) => {
   logger.fatal({ err }, 'Failed to initialize database');
   process.exit(1);

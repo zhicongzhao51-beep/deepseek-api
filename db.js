@@ -218,7 +218,10 @@ function createPaymentOrder(userId, packageInfo, orderNo) {
     [userId, orderNo, packageInfo.id, packageInfo.amount, packageInfo.points, packageInfo.bonus || 0, 'xorpay']
   );
   saveToDisk();
-  return { id: d.exec('SELECT last_insert_rowid()')[0].values[0][0], orderNo };
+  // Retrieve the auto-generated id
+  const result = d.exec('SELECT id FROM payment_orders WHERE order_no = ?', [orderNo]);
+  const id = result.length > 0 && result[0].values.length > 0 ? result[0].values[0][0] : 0;
+  return { id, orderNo };
 }
 
 function getPaymentOrder(orderNo) {
@@ -237,15 +240,20 @@ function getPaymentOrder(orderNo) {
 
 function completePaymentOrder(orderNo, providerChargeId) {
   const d = getDb();
-  // Idempotent: only complete if still pending
-  const result = d.exec(
+  // Check current status for idempotency
+  const before = d.exec('SELECT status FROM payment_orders WHERE order_no = ?', [orderNo]);
+  if (before.length === 0 || before[0].values.length === 0) return false;
+  const currentStatus = before[0].values[0][0];
+  if (currentStatus !== 'pending') return false;
+
+  // Update to paid
+  d.run(
     `UPDATE payment_orders SET status = 'paid', provider_charge_id = ?, paid_at = datetime('now')
-     WHERE order_no = ? AND status = 'pending'`,
+     WHERE order_no = ?`,
     [providerChargeId, orderNo]
   );
   saveToDisk();
-  // Return affected row count
-  return d.exec('SELECT changes()')[0].values[0][0] > 0;
+  return true;
 }
 
 function failPaymentOrder(orderNo) {
