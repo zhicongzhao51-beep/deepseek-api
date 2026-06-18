@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek API Service - 管理面板</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 24px; margin-bottom: 8px; }
+  .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .card h2 { font-size: 18px; margin-bottom: 16px; color: #f1f5f9; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #334155; color: #94a3b8; font-weight: 600; }
+  td { padding: 10px 8px; border-bottom: 1px solid #1e293b; }
+  tr:hover td { background: #33415522; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-green { background: #065f46; color: #6ee7b7; }
+  .badge-yellow { background: #713f12; color: #fcd34d; }
+  .badge-red { background: #7f1d1d; color: #fca5a5; }
+  input, button { padding: 10px 16px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 14px; }
+  input:focus { outline: none; border-color: #6366f1; }
+  button { background: #6366f1; border-color: #6366f1; cursor: pointer; font-weight: 600; }
+  button:hover { background: #5558e6; }
+  button.secondary { background: transparent; border-color: #475569; color: #94a3b8; }
+  .form-row { display: flex; gap: 12px; align-items: end; margin-bottom: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 13px; color: #94a3b8; }
+  .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 999; animation: slideIn 0.3s ease; }
+  .toast-success { background: #065f46; color: #6ee7b7; }
+  .toast-error { background: #7f1d1d; color: #fca5a5; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .code-block { background: #0f172a; padding: 12px 16px; border-radius: 8px; font-family: "Fira Code", monospace; font-size: 13px; word-break: break-all; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .stat-item { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; }
+  .stat-item .label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+  .stat-item .value { font-size: 28px; font-weight: 700; color: #f1f5f9; }
+  .login-overlay { position: fixed; inset: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .login-box { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 40px; width: 360px; text-align: center; }
+  .login-box h2 { margin-bottom: 24px; }
+  .login-box input { width: 100%; margin-bottom: 12px; }
+  .login-box button { width: 100%; }
+  .hidden { display: none !important; }
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab { padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; color: #94a3b8; border: 1px solid transparent; }
+  .tab.active { background: #6366f1; color: white; }
+</style>
+</head>
+<body>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>🔐 管理面板</h2>
+    <p style="color:#94a3b8;margin-bottom:20px;font-size:14px">输入管理员密码进入</p>
+    <input type="password" id="adminPassword" placeholder="管理员密码" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">进入</button>
+    <p style="color:#64748b;margin-top:16px;font-size:12px">默认密码: admin888</p>
+  </div>
+</div>
+
+<div class="container hidden" id="mainContent">
+  <h1>🚀 DeepSeek API Service</h1>
+  <p class="subtitle">管理面板 — 查看用户、用量统计、充值</p>
+
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('users')">👥 用户管理</div>
+    <div class="tab" onclick="switchTab('usage')">📊 用量统计</div>
+  </div>
+
+  <div id="tabUsers">
+    <div class="card">
+      <h2>➕ 为用户充值</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>用户名</label>
+          <input type="text" id="rechargeUser" placeholder="输入用户名">
+        </div>
+        <div class="form-group">
+          <label>充值点数</label>
+          <input type="number" id="rechargePoints" placeholder="100" min="1" value="100">
+        </div>
+        <button onclick="recharge()">💰 确认充值</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>👥 所有用户</h2>
+      <table id="userTable">
+        <thead><tr><th>用户名</th><th>API Key</th><th>余额(点)</th><th>注册时间</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tabUsage" class="hidden">
+    <div class="card">
+      <h2>📊 用量汇总</h2>
+      <table id="usageTable">
+        <thead><tr><th>用户名</th><th>端点</th><th>调用次数</th><th>Prompt Tokens</th><th>Completion Tokens</th><th>消耗点数</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+let ADMIN_KEY = '';
+
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function login() {
+  const pw = document.getElementById('adminPassword').value;
+  ADMIN_KEY = pw;
+  fetch(`/api/admin/stats?admin_key=${pw}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+        renderStats(data.data);
+        renderUsers(data.data.users);
+        renderUsage(data.data.usage_stats);
+      } else {
+        toast('密码错误', 'error');
+      }
+    })
+    .catch(() => toast('连接失败，请检查服务是否启动', 'error'));
+}
+
+function refreshData() {
+  fetch(`/api/admin/stats?admin_key=${ADMIN_KEY}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        renderStats(data.data);
+        renderUsers(data.data.users);
+        renderUsage(data.data.usage_stats);
+      }
+    });
+}
+
+function renderStats(data) {
+  const totalUsers = data.users.length;
+  const totalCalls = data.usage_stats.reduce((s, u) => s + u.calls, 0);
+  const totalPoints = data.usage_stats.reduce((s, u) => s + u.total_cost, 0);
+  const userBalances = data.users.reduce((s, u) => s + u.balance, 0);
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-item"><div class="label">总用户数</div><div class="value">${totalUsers}</div></div>
+    <div class="stat-item"><div class="label">总调用次数</div><div class="value">${totalCalls}</div></div>
+    <div class="stat-item"><div class="label">总消耗点数</div><div class="value">${totalPoints}</div></div>
+    <div class="stat-item"><div class="label">用户总余额</div><div class="value">${userBalances}</div></div>
+  `;
+}
+
+function renderUsers(users) {
+  const tbody = document.querySelector('#userTable tbody');
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td><strong>${esc(u.username)}</strong></td>
+      <td><span class="code-block" style="font-size:11px;padding:4px 8px;">${esc(u.api_key)}</span></td>
+      <td><span class="badge ${u.balance > 100 ? 'badge-green' : u.balance > 0 ? 'badge-yellow' : 'badge-red'}">${u.balance}</span></td>
+      <td>${esc(u.created_at)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderUsage(usage) {
+  const tbody = document.querySelector('#usageTable tbody');
+  if (!usage.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:40px">暂无数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = usage.map(u => `
+    <tr>
+      <td>${esc(u.username || '-')}</td>
+      <td><span class="badge badge-green">${esc(u.endpoint)}</span></td>
+      <td>${u.calls}</td>
+      <td>${u.total_prompt.toLocaleString()}</td>
+      <td>${u.total_completion.toLocaleString()}</td>
+      <td><strong>${u.total_cost}</strong></td>
+    </tr>
+  `).join('');
+}
+
+function recharge() {
+  const username = document.getElementById('rechargeUser').value.trim();
+  const points = parseInt(document.getElementById('rechargePoints').value);
+  if (!username || !points || points <= 0) {
+    toast('请输入有效的用户名和点数', 'error');
+    return;
+  }
+
+  fetch(`/api/admin/recharge?admin_key=${ADMIN_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, points }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        toast(data.message);
+        document.getElementById('rechargeUser').value = '';
+        refreshData();
+      } else {
+        toast(data.error, 'error');
+      }
+    });
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('[id^="tab"]').forEach(el => el.classList.add('hidden'));
+  document.querySelector(`.tab:nth-child(${tab === 'users' ? 1 : 2})`).classList.add('active');
+  document.getElementById(`tab${tab === 'users' ? 'Users' : 'Usage'}`).classList.remove('hidden');
+}
+
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
