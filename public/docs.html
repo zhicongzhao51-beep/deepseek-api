@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API 文档 - DeepSeek API Service</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: #1e293b; border-right: 1px solid #334155; padding: 24px 0; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 10; }
+  .sidebar h3 { padding: 0 20px; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 8px; }
+  .sidebar h3:first-child { margin-top: 0; }
+  .sidebar a { display: block; padding: 6px 20px; color: #94a3b8; text-decoration: none; font-size: 13px; border-left: 2px solid transparent; transition: all 0.15s; }
+  .sidebar a:hover, .sidebar a.active { color: #e2e8f0; border-left-color: #6366f1; background: #33415533; }
+  .main { margin-left: 260px; flex: 1; padding: 40px 48px; max-width: 900px; }
+  h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+  h2 { font-size: 22px; font-weight: 700; margin: 36px 0 16px; padding-bottom: 8px; border-bottom: 1px solid #1e293b; }
+  h3 { font-size: 17px; font-weight: 600; margin: 24px 0 12px; color: #cbd5e1; }
+  h4 { font-size: 15px; font-weight: 600; margin: 16px 0 8px; color: #94a3b8; }
+  p { color: #94a3b8; line-height: 1.7; margin-bottom: 12px; font-size: 14px; }
+  code { background: #1e293b; padding: 2px 6px; border-radius: 4px; font-family: "Fira Code", "Courier New", monospace; font-size: 13px; color: #f472b6; }
+  pre { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin-bottom: 16px; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; padding: 0; color: #e2e8f0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 14px; }
+  th { text-align: left; padding: 10px 12px; background: #1e293b; border-bottom: 2px solid #334155; color: #94a3b8; font-weight: 600; }
+  td { padding: 10px 12px; border-bottom: 1px solid #1e293b; }
+  tr:hover td { background: #1e293b44; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-get { background: #065f46; color: #6ee7b7; }
+  .badge-post { background: #1e3a5f; color: #93c5fd; }
+  .badge-key { background: #713f12; color: #fcd34d; }
+  .endpoint-block { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
+  .endpoint-block .url { font-family: "Fira Code", monospace; font-size: 15px; color: #e2e8f0; margin: 8px 0; }
+  .note { background: #1e1b4b; border-left: 3px solid #6366f1; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 13px; color: #a5b4fc; }
+  .warn { background: #451a03; border-left: 3px solid #f59e0b; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 13px; color: #fcd34d; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  .tab-btn { padding: 6px 14px; border-radius: 6px 6px 0 0; border: 1px solid #334155; background: #0f172a; color: #94a3b8; cursor: pointer; font-size: 12px; border-bottom: none; }
+  .tab-btn.active { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+  a { color: #6366f1; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+  .topbar .nav-links a { margin-left: 16px; font-size: 14px; }
+  @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 20px; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar">
+  <div style="padding: 0 20px 16px; font-size: 18px; font-weight: 800;">🚀 DSeek API</div>
+  <h3>概述</h3>
+  <a href="#overview" class="active">简介</a>
+  <a href="#quickstart">快速开始</a>
+  <a href="#auth">认证方式</a>
+  <h3>API 端点</h3>
+  <a href="#writer">AI 写作</a>
+  <a href="#translator">中英翻译</a>
+  <a href="#summary">文本摘要</a>
+  <a href="#me">账户信息</a>
+  <a href="#register">账号注册</a>
+  <h3>充值</h3>
+  <a href="#packages">套餐查询</a>
+  <a href="#create-order">创建订单</a>
+  <a href="#order-status">订单查询</a>
+  <h3>参考</h3>
+  <a href="#pricing">定价说明</a>
+  <a href="#rate-limits">速率限制</a>
+  <a href="#errors">错误码</a>
+</nav>
+
+<main class="main">
+<div class="topbar">
+  <h1>📖 API 文档</h1>
+  <div class="nav-links">
+    <a href="/">首页</a>
+    <a href="/recharge">💰 充值</a>
+    <a href="/admin">管理</a>
+  </div>
+</div>
+
+<!-- ====== Overview ====== -->
+<section id="overview">
+<h2>简介</h2>
+<p>DeepSeek API Service 封装了 DeepSeek 大模型能力，提供开箱即用的 <strong>AI 写作</strong>、<strong>中英翻译</strong>、<strong>文本摘要</strong> 三大垂直场景 API。用户按点数付费，注册即送 100 点。</p>
+<p><strong>Base URL:</strong> <code>http://localhost:3456</code></p>
+</section>
+
+<!-- ====== Quickstart ====== -->
+<section id="quickstart">
+<h2>快速开始</h2>
+<h3>1. 注册账号</h3>
+<pre><code>curl -X POST http://localhost:3456/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "myapp", "password": "mypassword"}'</code></pre>
+<p>返回 API Key 和初始 100 点数：</p>
+<pre><code>{
+  "success": true,
+  "data": {
+    "username": "myapp",
+    "api_key": "dsk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "balance": 100
+  }
+}</code></pre>
+
+<h3>2. 调用 API</h3>
+<p>在请求头中携带 API Key：</p>
+<pre><code>curl -X POST http://localhost:3456/api/writer \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer dsk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -d '{"input": "写一篇关于人工智能的科普文章，500字"}'</code></pre>
+
+<h3>3. 查看余额</h3>
+<pre><code>curl http://localhost:3456/api/me \
+  -H "Authorization: Bearer dsk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"</code></pre>
+
+<div class="note">💡 新用户注册即送 <strong>100 点</strong>，可以免费试用。</div>
+</section>
+
+<!-- ====== Auth ====== -->
+<section id="auth">
+<h2>认证方式</h2>
+<p>所有需要认证的 API 端点使用 <strong>Bearer Token</strong> 认证。在 HTTP 请求头中添加：</p>
+<pre><code>Authorization: Bearer &lt;your-api-key&gt;</code></pre>
+<p>API Key 格式为 <code>dsk-</code> 开头 + 32 位十六进制字符。</p>
+<div class="warn">⚠️ 请妥善保管您的 API Key。不要在客户端代码中暴露，建议在后端服务中使用。</div>
+</section>
+
+<!-- ====== Writer ====== -->
+<section id="writer">
+<h2>AI 写作</h2>
+<span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/writer</code>
+<p style="margin-top:12px">调用 DeepSeek 大模型生成各类中文内容：文章、营销文案、社交媒体内容、邮件、演讲稿等。</p>
+
+<div class="endpoint-block">
+<h4>请求参数</h4>
+<table>
+<tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>input</td><td>string</td><td>是</td><td>写作需求描述，最多 50000 字符</td></tr>
+<tr><td>max_tokens</td><td>number</td><td>否</td><td>最大输出长度，默认 2048，最大 8192</td></tr>
+</table>
+</div>
+
+<div class="tabs"><button class="tab-btn active">curl</button><button class="tab-btn">Python</button><button class="tab-btn">JavaScript</button></div>
+<pre><code>curl -X POST http://localhost:3456/api/writer \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"input": "写一篇关于春天的散文，300字左右"}'</code></pre>
+
+<p><strong>响应示例：</strong></p>
+<pre><code>{
+  "success": true,
+  "data": {
+    "result": "春天来了，万物复苏...",
+    "usage": {
+      "prompt_tokens": 45,
+      "completion_tokens": 320,
+      "points_cost": 1,
+      "balance_remaining": 99
+    }
+  }
+}</code></pre>
+</section>
+
+<!-- ====== Translator ====== -->
+<section id="translator">
+<h2>中英翻译</h2>
+<span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/translator</code>
+<p style="margin-top:12px">自动识别中英文方向，提供专业级翻译。中文翻译符合中文习惯，英文翻译地道流畅。</p>
+
+<div class="endpoint-block">
+<h4>请求参数</h4>
+<table>
+<tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>input</td><td>string</td><td>是</td><td>需要翻译的文本</td></tr>
+<tr><td>max_tokens</td><td>number</td><td>否</td><td>最大输出长度，默认 2048</td></tr>
+</table>
+</div>
+
+<pre><code>curl -X POST http://localhost:3456/api/translator \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"input": "Artificial intelligence is transforming every industry."}'</code></pre>
+
+<pre><code>{
+  "success": true,
+  "data": {
+    "result": "人工智能正在改变每一个行业。",
+    "usage": {
+      "prompt_tokens": 20,
+      "completion_tokens": 15,
+      "points_cost": 1,
+      "balance_remaining": 98
+    }
+  }
+}</code></pre>
+</section>
+
+<!-- ====== Summary ====== -->
+<section id="summary">
+<h2>文本摘要</h2>
+<span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/summary</code>
+<p style="margin-top:12px">将长文本提炼为精炼摘要，默认输出 3 种长度：一句话总结、段落摘要、详细摘要。</p>
+
+<pre><code>curl -X POST http://localhost:3456/api/summary \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"input": "（长文本内容...）"}'</code></pre>
+</section>
+
+<!-- ====== Me ====== -->
+<section id="me">
+<h2>账户信息</h2>
+<span class="badge badge-get">GET</span> <code class="url" style="margin-left:8px">/api/me</code>
+<p style="margin-top:12px">查询当前 API Key 的余额和使用统计。</p>
+
+<pre><code>curl http://localhost:3456/api/me \
+  -H "Authorization: Bearer $API_KEY"</code></pre>
+
+<pre><code>{
+  "success": true,
+  "data": {
+    "username": "myapp",
+    "balance": 95,
+    "usage_stats": [
+      { "endpoint": "writer", "calls": 3, "total_cost": 3 },
+      { "endpoint": "translator", "calls": 1, "total_cost": 1 }
+    ]
+  }
+}</code></pre>
+</section>
+
+<!-- ====== Register ====== -->
+<section id="register">
+<h2>账号注册</h2>
+<span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/register</code>
+<p style="margin-top:12px">注册新账号，无需认证。用户名 3-32 字符，密码 6-128 字符。</p>
+
+<pre><code>curl -X POST http://localhost:3456/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "newuser", "password": "securepass"}'</code></pre>
+
+<div class="note">🎁 新注册用户自动赠送 <strong>100 点</strong>。</div>
+</section>
+
+<!-- ====== Packages ====== -->
+<section id="packages">
+<h2>套餐查询</h2>
+<span class="badge badge-get">GET</span> <code class="url" style="margin-left:8px">/api/payments/packages</code>
+<p style="margin-top:12px">获取可用的充值套餐和定价，无需认证。</p>
+</section>
+
+<!-- ====== Create Order ====== -->
+<section id="create-order">
+<h2>创建充值订单</h2>
+<span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/payments/create-order</code>
+<p style="margin-top:12px">选择套餐创建支付订单，返回二维码链接。需要认证。</p>
+<table>
+<tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>package_id</td><td>string</td><td>是</td><td>套餐ID：basic / starter / popular / pro / ultimate</td></tr>
+</table>
+<pre><code>curl -X POST http://localhost:3456/api/payments/create-order \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"package_id": "popular"}'</code></pre>
+</section>
+
+<!-- ====== Order Status ====== -->
+<section id="order-status">
+<h2>订单查询</h2>
+<span class="badge badge-get">GET</span> <code class="url" style="margin-left:8px">/api/payments/order/:order_no</code>
+<span class="badge badge-get" style="margin-left:12px">GET</span> <code class="url" style="margin-left:8px">/api/payments/orders</code>
+<p style="margin-top:12px">查询单个订单状态或订单历史列表。</p>
+</section>
+
+<!-- ====== Pricing ====== -->
+<section id="pricing">
+<h2>定价说明</h2>
+<table>
+<tr><th>套餐</th><th>价格</th><th>点数</th><th>赠送</th><th>性价比</th></tr>
+<tr><td>基础包</td><td>¥10</td><td>1,000</td><td>-</td><td>1元=100点</td></tr>
+<tr><td>入门包</td><td>¥50</td><td>5,000</td><td>+500</td><td>1元=110点</td></tr>
+<tr><td>人气包</td><td>¥100</td><td>10,000</td><td>+2,000</td><td>1元=120点</td></tr>
+<tr><td>专业包</td><td>¥200</td><td>20,000</td><td>+5,000</td><td>1元=125点</td></tr>
+<tr><td>企业包</td><td>¥500</td><td>50,000</td><td>+15,000</td><td>1元=130点</td></tr>
+</table>
+<p><strong>计费规则：</strong> 每 1000 个输出 token 约消耗 1 点（约 ¥0.01 成本）。实际扣费基于 DeepSeek 官方的 prompt_tokens 和 completion_tokens 计算，约 10 倍加价。</p>
+</section>
+
+<!-- ====== Rate Limits ====== -->
+<section id="rate-limits">
+<h2>速率限制</h2>
+<table>
+<tr><th>端点类型</th><th>限制</th><th>时间窗口</th></tr>
+<tr><td>AI 端点 (writer/translator/summary)</td><td>30 次</td><td>每分钟</td></tr>
+<tr><td>认证端点 (register/login/me)</td><td>10 次</td><td>每分钟</td></tr>
+<tr><td>管理端点 (admin/*)</td><td>5 次</td><td>每分钟</td></tr>
+</table>
+<p>超出限制后返回 HTTP <code>429 Too Many Requests</code>。</p>
+</section>
+
+<!-- ====== Errors ====== -->
+<section id="errors">
+<h2>错误码</h2>
+<table>
+<tr><th>HTTP 状态码</th><th>错误信息</th><th>说明</th></tr>
+<tr><td>400</td><td>请求参数无效</td><td>缺少必填字段或格式不正确</td></tr>
+<tr><td>401</td><td>缺少/无效的 API Key</td><td>未提供 Authorization header 或 Key 无效</td></tr>
+<tr><td>402</td><td>余额不足</td><td>点数不足以完成本次请求</td></tr>
+<tr><td>403</td><td>管理员密码错误</td><td>X-Admin-Key header 不正确</td></tr>
+<tr><td>404</td><td>用户/订单不存在</td><td>请求的资源未找到</td></tr>
+<tr><td>429</td><td>请求过于频繁</td><td>超过速率限制，请稍后再试</td></tr>
+<tr><td>500</td><td>服务暂时不可用</td><td>服务器内部错误</td></tr>
+</table>
+<p>所有错误响应格式统一为：</p>
+<pre><code>{"success": false, "error": "错误描述"}</code></pre>
+</section>
+
+</main>
+</div>
+<script>
+// Copy code blocks on click
+document.querySelectorAll('pre code').forEach(function(block) {
+  block.parentElement.style.cursor = 'pointer';
+  block.parentElement.title = '点击复制';
+  block.parentElement.addEventListener('click', function() {
+    navigator.clipboard.writeText(block.textContent).then(function() {
+      var orig = block.parentElement.style.background;
+      block.parentElement.style.background = '#1e1b4b';
+      setTimeout(function() { block.parentElement.style.background = orig; }, 600);
+    });
+  });
+});
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var tabs = this.parentElement.querySelectorAll('.tab-btn');
+    tabs.forEach(function(t) { t.classList.remove('active'); });
+    this.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

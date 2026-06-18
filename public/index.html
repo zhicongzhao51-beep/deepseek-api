@@ -3,40 +3,233 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DeepSeek API Service</title>
+<title>DeepSeek API Service — AI 写作 · 翻译 · 摘要</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-  .hero { text-align: center; max-width: 600px; padding: 40px; }
-  h1 { font-size: 36px; margin-bottom: 12px; }
-  p { color: #94a3b8; font-size: 16px; line-height: 1.6; margin-bottom: 24px; }
-  .endpoints { text-align: left; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; }
-  .endpoints h3 { margin-bottom: 16px; font-size: 16px; }
-  .ep { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #1e293b; }
-  .ep:last-child { border-bottom: none; }
-  .method { background: #6366f1; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
-  .path { font-family: "Fira Code", monospace; font-size: 14px; }
-  .desc { color: #64748b; font-size: 13px; margin-left: auto; }
-  .footer { margin-top: 24px; font-size: 13px; color: #475569; }
-  a { color: #6366f1; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+  /* Nav */
+  nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1e293b; margin-bottom: 60px; }
+  nav .logo { font-size: 20px; font-weight: 800; }
+  nav .links { display: flex; gap: 24px; }
+  nav .links a { color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500; }
+  nav .links a:hover { color: #e2e8f0; }
+  nav .links a.cta { background: #6366f1; color: white; padding: 8px 20px; border-radius: 8px; }
+  nav .links a.cta:hover { background: #5558e6; }
+
+  /* Hero */
+  .hero { text-align: center; padding: 60px 0 80px; }
+  .hero .badge { display: inline-block; background: #1e1b4b; color: #a5b4fc; padding: 4px 14px; border-radius: 20px; font-size: 13px; margin-bottom: 20px; }
+  .hero h1 { font-size: 48px; font-weight: 800; line-height: 1.2; margin-bottom: 16px; background: linear-gradient(135deg, #e2e8f0 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero .sub { font-size: 18px; color: #94a3b8; max-width: 600px; margin: 0 auto 32px; line-height: 1.7; }
+  .hero .btns { display: flex; gap: 12px; justify-content: center; }
+  .btn { padding: 12px 28px; border-radius: 10px; font-size: 15px; font-weight: 600; text-decoration: none; display: inline-block; }
+  .btn-primary { background: #6366f1; color: white; }
+  .btn-primary:hover { background: #5558e6; }
+  .btn-outline { background: transparent; border: 1px solid #475569; color: #e2e8f0; }
+  .btn-outline:hover { border-color: #94a3b8; }
+
+  /* Features */
+  .features { padding: 80px 0; }
+  .section-title { text-align: center; font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+  .section-sub { text-align: center; color: #94a3b8; font-size: 16px; margin-bottom: 48px; }
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+  .feature-card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 28px; transition: all 0.2s; }
+  .feature-card:hover { border-color: #6366f1; transform: translateY(-4px); }
+  .feature-card .icon { font-size: 28px; margin-bottom: 16px; }
+  .feature-card h3 { font-size: 18px; margin-bottom: 8px; }
+  .feature-card p { color: #94a3b8; font-size: 14px; line-height: 1.7; }
+
+  /* Pricing */
+  .pricing { padding: 80px 0; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-top: 40px; }
+  .price-card { background: #1e293b; border: 2px solid #334155; border-radius: 14px; padding: 24px; text-align: center; transition: all 0.2s; }
+  .price-card:hover { border-color: #6366f1; }
+  .price-card.highlight { border-color: #6366f1; background: #1e1b4b; position: relative; }
+  .price-card.highlight::before { content: "推荐"; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 2px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .price-card .name { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+  .price-card .price { font-size: 32px; font-weight: 800; color: #6366f1; margin-bottom: 4px; }
+  .price-card .price span { font-size: 14px; color: #94a3b8; font-weight: 400; }
+  .price-card .pts { font-size: 14px; color: #94a3b8; margin-bottom: 4px; }
+  .price-card .bonus { font-size: 12px; color: #f59e0b; min-height: 18px; }
+
+  /* Code Demo */
+  .demo { padding: 80px 0; }
+  .demo-box { background: #0f172a; border: 1px solid #334155; border-radius: 14px; padding: 28px; max-width: 700px; margin: 0 auto; }
+  .demo-box pre { font-size: 13px; line-height: 1.7; overflow-x: auto; }
+  .demo-box .comment { color: #64748b; }
+
+  /* FAQ */
+  .faq { padding: 80px 0; }
+  .faq-item { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px 24px; margin-bottom: 12px; }
+  .faq-item h4 { font-size: 16px; margin-bottom: 8px; }
+  .faq-item p { color: #94a3b8; font-size: 14px; line-height: 1.7; }
+
+  /* Footer */
+  footer { border-top: 1px solid #1e293b; padding: 40px 0; text-align: center; color: #64748b; font-size: 13px; margin-top: 60px; }
+  footer a { color: #6366f1; text-decoration: none; }
+  footer .links { margin-bottom: 16px; display: flex; gap: 20px; justify-content: center; }
+
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 32px; }
+    .pricing-grid { grid-template-columns: 1fr 1fr; }
+  }
 </style>
 </head>
 <body>
-<div class="hero">
-  <h1>🚀 DeepSeek API Service</h1>
-  <p>封装 DeepSeek 大模型能力，提供开箱即用的 AI 写作、翻译、摘要 API</p>
-  <div class="endpoints">
-    <h3>📡 API 接口</h3>
-    <div class="ep"><span class="method">POST</span><span class="path">/api/writer</span><span class="desc">AI写作</span></div>
-    <div class="ep"><span class="method">POST</span><span class="path">/api/translator</span><span class="desc">中英互译</span></div>
-    <div class="ep"><span class="method">POST</span><span class="path">/api/summary</span><span class="desc">文本摘要</span></div>
-    <div class="ep"><span class="method">GET</span><span class="path">/api/me</span><span class="desc">查询余额</span></div>
-    <div class="ep"><span class="method">POST</span><span class="path">/api/payments/create-order</span><span class="desc">充值下单</span></div>
-	    <div class="ep"><span class="method">POST</span><span class="path">/api/register</span><span class="desc">注册账号</span></div>
+
+<nav class="container">
+  <div class="logo">🚀 DSeek API</div>
+  <div class="links">
+    <a href="/docs">📖 文档</a>
+    <a href="/recharge">💰 充值</a>
+    <a href="/admin">⚙️ 管理</a>
+    <a href="/recharge" class="cta">开始使用</a>
   </div>
-  <p class="footer">
-    <a href="/recharge">💰 在线充值</a> &nbsp;|&nbsp; 管理面板: <a href="/admin">/admin</a> &nbsp;|&nbsp; 健康检查: <a href="/api/health">/api/health</a>
-  </p>
-</div>
+</nav>
+
+<!-- Hero -->
+<section class="hero container">
+  <div class="badge">🎉 新用户注册即送 100 点</div>
+  <h1>DeepSeek 大模型 API<br>开箱即用</h1>
+  <p class="sub">封装 DeepSeek V4 模型，提供 AI 写作、中英翻译、文本摘要三大场景 API。注册即用，按量付费，无需关心模型部署。</p>
+  <div class="btns">
+    <a href="/docs" class="btn btn-primary">📖 查看文档</a>
+    <a href="/recharge" class="btn btn-outline">💰 在线充值</a>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features container">
+  <h2 class="section-title">三大核心能力</h2>
+  <p class="section-sub">专为中文场景优化的 AI API 服务</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="icon">✍️</div>
+      <h3>AI 写作</h3>
+      <p>文章、营销文案、社交媒体内容、邮件、演讲稿 — 根据需求自动判断文体，语言流畅自然，避免 AI 痕迹。</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🌐</div>
+      <h3>中英翻译</h3>
+      <p>自动识别翻译方向，准确传达原文意思，中文符合中文习惯，英文地道流畅。专业术语准确。</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📋</div>
+      <h3>文本摘要</h3>
+      <p>长文本提炼，自动输出三种长度：一句话总结、段落摘要、详细摘要。提取核心观点和关键数据。</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🔑</div>
+      <h3>简单接入</h3>
+      <p>RESTful API，Bearer Token 认证。注册即得 API Key，curl / Python / JavaScript 一行代码调用。</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🛡️</div>
+      <h3>安全可靠</h3>
+      <p>速率限制、输入验证、签名校验。所有 API Key 加密存储，支付回调多重验签。</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">💎</div>
+      <h3>按量付费</h3>
+      <p>点数制计费，用多少扣多少。大额套餐享额外赠送，性价比最高 1元=130点。</p>
+    </div>
+  </div>
+</section>
+
+<!-- Demo -->
+<section class="demo container">
+  <h2 class="section-title">一行命令即可调用</h2>
+  <p class="section-sub">注册 → 获取 Key → 调用 API，三步完成</p>
+  <div class="demo-box">
+<pre><span class="comment"># 1. 注册获取 API Key</span>
+curl -X POST http://localhost:3456/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"myapp", "password":"pass123"}'
+
+<span class="comment"># 2. 调用 AI 写作</span>
+curl -X POST http://localhost:3456/api/writer \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"input":"写一篇关于人工智能的科普文章"}'</pre>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="pricing container">
+  <h2 class="section-title">透明定价</h2>
+  <p class="section-sub">按量计费，大额套餐更优惠</p>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="name">🎁 新用户</div>
+      <div class="price" style="font-size:24px">免费</div>
+      <div class="pts">100 点</div>
+      <div class="bonus">注册即送</div>
+    </div>
+    <div class="price-card">
+      <div class="name">基础包</div>
+      <div class="price">¥10 <span>CNY</span></div>
+      <div class="pts">1,000 点</div>
+      <div class="bonus">&nbsp;</div>
+    </div>
+    <div class="price-card highlight">
+      <div class="name">人气包</div>
+      <div class="price">¥100 <span>CNY</span></div>
+      <div class="pts">10,000 点</div>
+      <div class="bonus">🎁 送 2,000 点</div>
+    </div>
+    <div class="price-card">
+      <div class="name">入门包</div>
+      <div class="price">¥50 <span>CNY</span></div>
+      <div class="pts">5,000 点</div>
+      <div class="bonus">🎁 送 500 点</div>
+    </div>
+    <div class="price-card">
+      <div class="name">专业包</div>
+      <div class="price">¥200 <span>CNY</span></div>
+      <div class="pts">20,000 点</div>
+      <div class="bonus">🎁 送 5,000 点</div>
+    </div>
+    <div class="price-card">
+      <div class="name">企业包</div>
+      <div class="price">¥500 <span>CNY</span></div>
+      <div class="pts">50,000 点</div>
+      <div class="bonus">🎁 送 15,000 点</div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq container">
+  <h2 class="section-title">常见问题</h2>
+  <p class="section-sub" style="margin-bottom:32px"></p>
+  <div class="faq-item">
+    <h4>1 点等于多少钱？</h4>
+    <p>约 ¥0.01 的 DeepSeek API 成本，对我们收取约 ¥0.10。基础包 1元=100点，大额套餐最高 1元=130点。</p>
+  </div>
+  <div class="faq-item">
+    <h4>支持哪些支付方式？</h4>
+    <p>支持微信支付和支付宝扫码支付，通过 XorPay 聚合支付平台处理。</p>
+  </div>
+  <div class="faq-item">
+    <h4>如何获取 API Key？</h4>
+    <p>调用 /api/register 注册账号后自动获取。API Key 以 dsk- 开头，请妥善保管。</p>
+  </div>
+  <div class="faq-item">
+    <h4>有免费试用吗？</h4>
+    <p>有的！新注册用户自动赠送 100 点，可以免费试用所有 API 端点。</p>
+  </div>
+</section>
+
+<footer class="container">
+  <div class="links">
+    <a href="/docs">API 文档</a>
+    <a href="/recharge">在线充值</a>
+    <a href="/api/health">健康检查</a>
+  </div>
+  <p>Powered by DeepSeek V4 · 按量付费 · 无需关心模型部署</p>
+</footer>
+
 </body>
 </html>
