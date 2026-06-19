@@ -170,6 +170,7 @@ router.post('/submit-proof',
       bonusPoints: order.bonus_points || 0,
       transactionId: transaction_id,
       proofNote: proof_note || '',
+      approveToken: order.approve_token,
     }).catch(() => {});
 
     res.json({

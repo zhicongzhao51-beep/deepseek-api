@@ -73,9 +73,10 @@ async function sendServerChan(title, content, sendKey) {
  * @param {number} params.bonusPoints
  * @param {string} params.transactionId
  * @param {string} [params.proofNote]
+ * @param {string} [params.approveToken]
  */
-async function notifyNewPaymentProof({ orderNo, username, amount, packageLabel, points, bonusPoints, transactionId, proofNote }) {
-  const title = `💰 新的充值订单 - ¥${amount}`;
+async function notifyNewPaymentProof({ orderNo, username, amount, packageLabel, points, bonusPoints, transactionId, proofNote, approveToken }) {
+  const title = `💰 新充值 - ¥${amount}`;
   const totalPoints = points + bonusPoints;
 
   const content = [
@@ -92,7 +93,15 @@ async function notifyNewPaymentProof({ orderNo, username, amount, packageLabel, 
   }
 
   content.push('');
-  content.push(`[去管理面板审核](https://deepseek-api-service-production.up.railway.app/admin)`);
+
+  if (approveToken) {
+    const approveUrl = `https://deepseek-api-service-production.up.railway.app/approve/${approveToken}`;
+    content.push(`[✅ 一键确认收款](${approveUrl})`);
+    content.push('');
+    content.push(`或打开管理面板: [admin](${approveUrl.replace('/approve/' + approveToken, '/admin')})`);
+  } else {
+    content.push(`[去管理面板审核](https://deepseek-api-service-production.up.railway.app/admin)`);
+  }
 
   return sendServerChan(title, content.join('\n'));
 }

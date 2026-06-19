@@ -1,6 +1,7 @@
 const initSqlJs = require('sql.js');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const logger = require('./logger');
@@ -94,6 +95,7 @@ async function init() {
     };
     addColumn('payment_orders', 'transaction_id TEXT');
     addColumn('payment_orders', 'proof_note TEXT DEFAULT \'\'');
+    addColumn('payment_orders', 'approve_token TEXT');
 
     db.run(`
       CREATE TABLE IF NOT EXISTS invite_codes (
@@ -234,21 +236,22 @@ function getAllUsers() {
 
 function createPaymentOrder(userId, packageInfo, orderNo, provider = 'xorpay') {
   const d = getDb();
+  const approveToken = crypto.randomBytes(16).toString('hex');
   d.run(
-    `INSERT INTO payment_orders (user_id, order_no, package_id, amount, points, bonus_points, provider)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [userId, orderNo, packageInfo.id, packageInfo.amount, packageInfo.points, packageInfo.bonus || 0, provider]
+    `INSERT INTO payment_orders (user_id, order_no, package_id, amount, points, bonus_points, provider, approve_token)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [userId, orderNo, packageInfo.id, packageInfo.amount, packageInfo.points, packageInfo.bonus || 0, provider, approveToken]
   );
   saveToDisk();
   const result = d.exec('SELECT id FROM payment_orders WHERE order_no = ?', [orderNo]);
   const id = result.length > 0 && result[0].values.length > 0 ? result[0].values[0][0] : 0;
-  return { id, orderNo };
+  return { id, orderNo, approveToken };
 }
 
 function getPaymentOrder(orderNo) {
   const d = getDb();
   const result = d.exec(
-    'SELECT id, user_id, order_no, package_id, amount, points, bonus_points, provider, provider_charge_id, transaction_id, proof_note, status, paid_at, created_at FROM payment_orders WHERE order_no = ?',
+    'SELECT id, user_id, order_no, package_id, amount, points, bonus_points, provider, provider_charge_id, transaction_id, proof_note, approve_token, status, paid_at, created_at FROM payment_orders WHERE order_no = ?',
     [orderNo]
   );
   if (result.length === 0 || result[0].values.length === 0) return null;
@@ -257,6 +260,49 @@ function getPaymentOrder(orderNo) {
   const obj = {};
   cols.forEach((col, i) => (obj[col] = row[i]));
   return obj;
+}
+
+// Quick approve by token (used in WeChat one-click approval links)
+function getPaymentOrderByApproveToken(token) {
+  const d = getDb();
+  const result = d.exec(
+    'SELECT id, user_id, order_no, package_id, amount, points, bonus_points, provider, transaction_id, proof_note, status, paid_at, created_at FROM payment_orders WHERE approve_token = ?',
+    [token]
+  );
+  if (result.length === 0 || result[0].values.length === 0) return null;
+  const cols = result[0].columns;
+  const row = result[0].values[0];
+  const obj = {};
+  cols.forEach((col, i) => (obj[col] = row[i]));
+  return obj;
+}
+
+// Quick approve: approve order by token, return the order info
+function quickApproveOrder(token) {
+  const order = getPaymentOrderByApproveToken(token);
+  if (!order) return null;
+  if (order.status === 'paid') return { ...order, alreadyApproved: true };
+  if (order.status !== 'submitted') return null;
+
+  const d = getDb();
+  const paidAt = new Date().toISOString().replace('T', ' ').split('.')[0];
+  d.run(
+    'UPDATE payment_orders SET status = ?, paid_at = ? WHERE approve_token = ?',
+    ['paid', paidAt, token]
+  );
+
+  // Credit user balance
+  d.run(
+    'UPDATE users SET balance = balance + ? WHERE id = ?',
+    [order.points + (order.bonus_points || 0), order.user_id]
+  );
+
+  // Get username
+  const userResult = d.exec('SELECT username FROM users WHERE id = ?', [order.user_id]);
+  const username = (userResult.length > 0 && userResult[0].values.length > 0) ? userResult[0].values[0][0] : 'unknown';
+
+  saveToDisk();
+  return { ...order, username, alreadyApproved: false };
 }
 
 function completePaymentOrder(orderNo, providerChargeId) {
@@ -500,4 +546,6 @@ module.exports = {
   generateInviteCode,
   getPaymentStats,
   getEndpointBreakdown,
+  getPaymentOrderByApproveToken,
+  quickApproveOrder,
 };

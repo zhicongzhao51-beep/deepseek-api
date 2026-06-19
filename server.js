@@ -132,6 +132,131 @@ app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] })
 const paymentRoutes = require('./routes/payments');
 app.use('/api/payments', paymentRoutes);
 
+// ── Quick Approve (one-click from WeChat notification) ──────
+
+app.get('/approve/:token', (req, res) => {
+  const order = db.getPaymentOrderByApproveToken(req.params.token);
+  if (!order) {
+    return res.status(404).send('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>链接无效</title><style>body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;text-align:center;padding:20px}</style></head><body><div><h1 style="font-size:48px;margin-bottom:16px">🔗</h1><h2>链接无效或已过期</h2><p style="color:#94a3b8">该审核链接不存在或已被使用</p></div></body></html>');
+  }
+  if (order.status === 'paid') {
+    return res.send('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>已审核</title><style>body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;text-align:center;padding:20px}</style></head><body><div><h1 style="font-size:48px;margin-bottom:16px">✅</h1><h2>此订单已审核通过</h2><p style="color:#94a3b8">订单 ${order.order_no}，¥${order.amount}，${order.points.toLocaleString()} 点已到账</p></div></body></html>');
+  }
+  if (order.status !== 'submitted') {
+    return res.send('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>状态异常</title><style>body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;text-align:center;padding:20px}</style></head><body><div><h1 style="font-size:48px;margin-bottom:16px">⚠️</h1><h2>订单状态异常</h2><p style="color:#94a3b8">订单 ${order.order_no} 当前状态为 ${order.status}，无法审核</p></div></body></html>');
+  }
+
+  // Show confirmation page
+  res.send(`<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>确认收款</title>
+<style>
+  body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;max-width:480px;margin:0 auto}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:24px;margin:24px 0}
+  h2{font-size:22px;margin-bottom:4px}
+  .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1e293b;font-size:15px}
+  .row .l{color:#94a3b8}.row .v{font-weight:600}
+  .btn{display:block;width:100%;padding:16px;border-radius:12px;font-size:18px;font-weight:700;border:none;cursor:pointer;margin-bottom:12px;text-align:center}
+  .btn-approve{background:#22c55e;color:white}
+  .btn-reject{background:#7f1d1d;color:#fca5a5}
+  .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;font-size:14px;z-index:999;display:none}
+  .toast-success{background:#065f46;color:#6ee7b7}
+  .toast-error{background:#7f1d1d;color:#fca5a5}
+</style>
+</head>
+<body>
+<h2 style="text-align:center;margin-top:32px">💰 确认收款</h2>
+<p style="text-align:center;color:#94a3b8;margin-bottom:8px">请在微信/支付宝确认已收到款项</p>
+<div class="card">
+  <div class="row"><span class="l">订单号</span><span class="v" style="font-family:monospace;font-size:13px">${order.order_no}</span></div>
+  <div class="row"><span class="l">套餐</span><span class="v">${order.package_id}</span></div>
+  <div class="row"><span class="l">金额</span><span class="v" style="color:#f59e0b">¥${order.amount}</span></div>
+  <div class="row"><span class="l">点数</span><span class="v">${(order.points + (order.bonus_points||0)).toLocaleString()} 点</span></div>
+  <div class="row"><span class="l">交易单号</span><span class="v" style="font-size:13px">${order.transaction_id || '-'}</span></div>
+  <div class="row"><span class="l">备注</span><span class="v" style="font-size:13px">${order.proof_note || '-'}</span></div>
+</div>
+<button class="btn btn-approve" onclick="approve()">✅ 确认已收款，立即到账</button>
+<button class="btn btn-reject" onclick="reject()">❌ 驳回</button>
+<div id="toast" class="toast"></div>
+<script>
+function toast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='toast toast-'+(type||'success');t.style.display='block';setTimeout(function(){t.style.display='none'},2000)}
+function approve(){
+  var btns=document.querySelectorAll('.btn');btns.forEach(function(b){b.disabled=true;b.style.opacity='0.5'});
+  fetch('/approve/${order.approve_token}',{method:'POST'})
+    .then(function(r){return r.text()})
+    .then(function(html){
+      document.body.innerHTML=html;
+    });
+}
+function reject(){
+  if(!confirm('确定驳回此订单吗？用户可重新提交凭证。'))return;
+  var btns=document.querySelectorAll('.btn');btns.forEach(function(b){b.disabled=true;b.style.opacity='0.5'});
+  fetch('/approve/${order.approve_token}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reject'})})
+    .then(function(r){return r.text()})
+    .then(function(html){
+      document.body.innerHTML=html;
+    });
+}
+</script>
+</body>
+</html>`);
+});
+
+app.post('/approve/:token', (req, res) => {
+  const { action } = req.body || {};
+
+  if (action === 'reject') {
+    const order = db.getPaymentOrderByApproveToken(req.params.token);
+    if (!order) {
+      return res.send('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>错误</title><style>body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;text-align:center;padding:20px}</style></head><body><div><h1 style="font-size:48px">❌</h1><h2>订单不存在</h2></div></body></html>');
+    }
+    const { adminRejectOrder } = require('./db');
+    adminRejectOrder(order.order_no);
+    return res.send('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>已驳回</title><style>body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;text-align:center;padding:20px}</style></head><body><div><h1 style="font-size:48px">🚫</h1><h2>订单已驳回</h2><p style="color:#94a3b8">订单 ${order.order_no} 已驳回，用户可重新提交凭证</p></div></body></html>');
+  }
+
+  // Approve
+  const result = db.quickApproveOrder(req.params.token);
+  if (!result) {
+    return res.send('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>审核失败</title><style>body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;text-align:center;padding:20px}</style></head><body><div><h1 style="font-size:48px">❌</h1><h2>审核失败</h2><p style="color:#94a3b8">链接无效或订单状态异常</p></div></body></html>');
+  }
+
+  logger.info({ orderNo: result.order_no, username: result.username, amount: result.amount }, 'Quick approved via WeChat link');
+
+  res.send(`<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>审核成功</title>
+<style>
+  body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;text-align:center;padding:20px}
+  .card{background:#1e293b;border:2px solid #22c55e;border-radius:16px;padding:32px 24px;max-width:400px}
+  h1{font-size:56px;margin-bottom:12px}
+  h2{color:#22c55e;margin-bottom:8px}
+  .info{margin-top:16px;color:#94a3b8;font-size:14px;line-height:1.8}
+  .info span{color:#e2e8f0;font-weight:600}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>✅</h1>
+  <h2>收款确认成功！</h2>
+  <p style="color:#94a3b8">点数已自动到账</p>
+  <div class="info">
+    <div>订单: <span>${result.order_no}</span></div>
+    <div>用户: <span>${result.username}</span></div>
+    <div>金额: <span style="color:#f59e0b">¥${result.amount}</span></div>
+    <div>到账: <span>${(result.points + (result.bonus_points||0)).toLocaleString()} 点</span></div>
+  </div>
+</div>
+</body>
+</html>`);
+});
+
 // ── DeepSeek API Call ───────────────────────────────────────
 
 /**
