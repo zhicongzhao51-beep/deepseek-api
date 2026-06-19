@@ -3,222 +3,389 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DeepSeek API Service — AI 写作 · 翻译 · 摘要</title>
+<meta name="description" content="DeepSeek API Service — 封装DeepSeek大模型，提供AI写作、翻译、摘要、代码生成、代码审查、数据分析等7大API服务。注册即用，按量付费，¥10起。">
+<meta name="keywords" content="DeepSeek API, AI写作API, AI翻译API, AI摘要API, 代码生成API, AI接口, 大模型API">
+<meta property="og:title" content="DeepSeek API Service — AI 能力即服务">
+<meta property="og:description" content="7大AI API，开箱即用，注册送100点免费试用">
+<meta property="og:type" content="website">
+<title>DeepSeek API Service — AI 写作 · 翻译 · 摘要 · 代码生成</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
   .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
 
-  /* Nav */
-  nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1e293b; margin-bottom: 60px; }
-  nav .logo { font-size: 20px; font-weight: 800; }
-  nav .links { display: flex; gap: 24px; }
-  nav .links a { color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500; }
+  /* ── Nav ── */
+  nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1e293b; position: sticky; top: 0; background: #0f172af8; backdrop-filter: blur(12px); z-index: 100; }
+  nav .logo { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  nav .logo .dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  nav .links { display: flex; gap: 20px; align-items: center; }
+  nav .links a { color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500; transition: color .2s; }
   nav .links a:hover { color: #e2e8f0; }
-  nav .links a.cta { background: #6366f1; color: white; padding: 8px 20px; border-radius: 8px; }
-  nav .links a.cta:hover { background: #5558e6; }
+  nav .links a.cta { background: #6366f1; color: white; padding: 10px 22px; border-radius: 10px; font-weight: 600; }
+  nav .links a.cta:hover { background: #5558e6; color: white; }
 
-  /* Hero */
-  .hero { text-align: center; padding: 60px 0 80px; }
-  .hero .badge { display: inline-block; background: #1e1b4b; color: #a5b4fc; padding: 4px 14px; border-radius: 20px; font-size: 13px; margin-bottom: 20px; }
-  .hero h1 { font-size: 48px; font-weight: 800; line-height: 1.2; margin-bottom: 16px; background: linear-gradient(135deg, #e2e8f0 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .hero .sub { font-size: 18px; color: #94a3b8; max-width: 600px; margin: 0 auto 32px; line-height: 1.7; }
-  .hero .btns { display: flex; gap: 12px; justify-content: center; }
-  .btn { padding: 12px 28px; border-radius: 10px; font-size: 15px; font-weight: 600; text-decoration: none; display: inline-block; }
-  .btn-primary { background: #6366f1; color: white; }
-  .btn-primary:hover { background: #5558e6; }
+  /* ── Hero ── */
+  .hero { text-align: center; padding: 80px 0 60px; }
+  .hero .badge { display: inline-flex; align-items: center; gap: 6px; background: #1e1b4b; color: #a5b4fc; padding: 6px 18px; border-radius: 24px; font-size: 14px; margin-bottom: 24px; border: 1px solid #312e81; }
+  .hero .badge .live-dot { width: 6px; height: 6px; background: #22c55e; border-radius: 50%; }
+  .hero h1 { font-size: 52px; font-weight: 800; line-height: 1.15; margin-bottom: 20px; background: linear-gradient(135deg, #e2e8f0 0%, #a5b4fc 50%, #818cf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero .sub { font-size: 18px; color: #94a3b8; max-width: 680px; margin: 0 auto 36px; line-height: 1.8; }
+  .hero .btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn { padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all .2s; cursor: pointer; border: none; }
+  .btn-primary { background: #6366f1; color: white; box-shadow: 0 4px 20px rgba(99,102,241,.35); }
+  .btn-primary:hover { background: #5558e6; transform: translateY(-1px); box-shadow: 0 6px 28px rgba(99,102,241,.45); }
   .btn-outline { background: transparent; border: 1px solid #475569; color: #e2e8f0; }
-  .btn-outline:hover { border-color: #94a3b8; }
+  .btn-outline:hover { border-color: #6366f1; }
+  .btn-white { background: white; color: #0f172a; }
+  .btn-white:hover { background: #e2e8f0; }
 
-  /* Features */
-  .features { padding: 80px 0; }
-  .section-title { text-align: center; font-size: 32px; font-weight: 800; margin-bottom: 12px; }
-  .section-sub { text-align: center; color: #94a3b8; font-size: 16px; margin-bottom: 48px; }
-  .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
-  .feature-card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 28px; transition: all 0.2s; }
-  .feature-card:hover { border-color: #6366f1; transform: translateY(-4px); }
-  .feature-card .icon { font-size: 28px; margin-bottom: 16px; }
-  .feature-card h3 { font-size: 18px; margin-bottom: 8px; }
-  .feature-card p { color: #94a3b8; font-size: 14px; line-height: 1.7; }
+  /* ── Stats Bar ── */
+  .stats-bar { display: flex; justify-content: center; gap: 48px; padding: 32px 0; border-top: 1px solid #1e293b; border-bottom: 1px solid #1e293b; flex-wrap: wrap; }
+  .stats-bar .stat { text-align: center; }
+  .stats-bar .stat .num { font-size: 28px; font-weight: 800; color: #6366f1; }
+  .stats-bar .stat .lbl { font-size: 13px; color: #64748b; margin-top: 2px; }
 
-  /* Pricing */
-  .pricing { padding: 80px 0; }
-  .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-top: 40px; }
-  .price-card { background: #1e293b; border: 2px solid #334155; border-radius: 14px; padding: 24px; text-align: center; transition: all 0.2s; }
-  .price-card:hover { border-color: #6366f1; }
-  .price-card.highlight { border-color: #6366f1; background: #1e1b4b; position: relative; }
-  .price-card.highlight::before { content: "推荐"; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 2px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  /* ── Sections ── */
+  section { padding: 90px 0; }
+  .section-title { text-align: center; font-size: 34px; font-weight: 800; margin-bottom: 12px; letter-spacing: -.5px; }
+  .section-sub { text-align: center; color: #94a3b8; font-size: 17px; margin-bottom: 56px; }
+
+  /* ── How It Works ── */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .step-card { text-align: center; padding: 36px 24px; background: #1e293b; border: 1px solid #334155; border-radius: 16px; position: relative; transition: all .2s; }
+  .step-card:hover { border-color: #6366f1; transform: translateY(-4px); }
+  .step-card .step-num { width: 44px; height: 44px; background: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; margin: 0 auto 16px; }
+  .step-card h3 { font-size: 18px; margin-bottom: 8px; }
+  .step-card p { color: #94a3b8; font-size: 14px; line-height: 1.7; }
+  .step-arrow { display: none; }
+
+  /* ── Features ── */
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 24px; }
+  .feature-card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 32px; transition: all .25s; position: relative; overflow: hidden; }
+  .feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: transparent; transition: background .25s; }
+  .feature-card:hover { border-color: #6366f1; transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .feature-card:hover::before { background: #6366f1; }
+  .feature-card .icon { font-size: 32px; margin-bottom: 16px; display: block; }
+  .feature-card h3 { font-size: 19px; margin-bottom: 10px; }
+  .feature-card p { color: #94a3b8; font-size: 14px; line-height: 1.75; }
+
+  /* ── Demo ── */
+  .demo-box { background: #0a0e1a; border: 1px solid #334155; border-radius: 16px; overflow: hidden; max-width: 780px; margin: 0 auto; }
+  .demo-box .demo-header { background: #1e293b; padding: 12px 20px; display: flex; gap: 8px; align-items: center; }
+  .demo-box .demo-header .d { width: 12px; height: 12px; border-radius: 50%; }
+  .demo-box .demo-header .d1 { background: #ef4444; } .demo-box .demo-header .d2 { background: #f59e0b; } .demo-box .demo-header .d3 { background: #22c55e; }
+  .demo-box .demo-header .title { margin-left: 12px; color: #64748b; font-size: 13px; }
+  .demo-box pre { padding: 28px; font-size: 13px; line-height: 1.8; overflow-x: auto; color: #e2e8f0; }
+  .demo-box .c { color: #64748b; }
+  .demo-box .s { color: #6ee7b7; }
+  .demo-box .k { color: #93c5fd; }
+  .demo-box .v { color: #f59e0b; }
+
+  /* ── Pricing ── */
+  .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-top: 40px; }
+  .price-card { background: #1e293b; border: 2px solid #334155; border-radius: 16px; padding: 28px 20px; text-align: center; transition: all .25s; position: relative; }
+  .price-card:hover { border-color: #6366f1; transform: translateY(-4px); }
+  .price-card.highlight { border-color: #6366f1; background: linear-gradient(180deg, #1e1b4b 0%, #1e293b 100%); box-shadow: 0 8px 32px rgba(99,102,241,.2); }
+  .price-card.highlight::before { content: "🔥 推荐"; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #6366f1; color: white; padding: 3px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; }
   .price-card .name { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
-  .price-card .price { font-size: 32px; font-weight: 800; color: #6366f1; margin-bottom: 4px; }
+  .price-card .price { font-size: 34px; font-weight: 800; color: #6366f1; margin-bottom: 4px; }
   .price-card .price span { font-size: 14px; color: #94a3b8; font-weight: 400; }
   .price-card .pts { font-size: 14px; color: #94a3b8; margin-bottom: 4px; }
   .price-card .bonus { font-size: 12px; color: #f59e0b; min-height: 18px; }
+  .price-card .unit { font-size: 12px; color: #64748b; margin-top: 8px; border-top: 1px solid #334155; padding-top: 8px; }
 
-  /* Code Demo */
-  .demo { padding: 80px 0; }
-  .demo-box { background: #0f172a; border: 1px solid #334155; border-radius: 14px; padding: 28px; max-width: 700px; margin: 0 auto; }
-  .demo-box pre { font-size: 13px; line-height: 1.7; overflow-x: auto; }
-  .demo-box .comment { color: #64748b; }
+  /* ── Use Cases ── */
+  .usecase-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 20px; }
+  .usecase-card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 24px; }
+  .usecase-card h4 { font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .usecase-card p { color: #94a3b8; font-size: 13px; line-height: 1.7; }
 
-  /* FAQ */
-  .faq { padding: 80px 0; }
-  .faq-item { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px 24px; margin-bottom: 12px; }
-  .faq-item h4 { font-size: 16px; margin-bottom: 8px; }
-  .faq-item p { color: #94a3b8; font-size: 14px; line-height: 1.7; }
+  /* ── FAQ ── */
+  .faq-list { max-width: 760px; margin: 0 auto; }
+  .faq-item { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 22px 28px; margin-bottom: 12px; cursor: pointer; transition: all .2s; }
+  .faq-item:hover { border-color: #475569; }
+  .faq-item h4 { font-size: 16px; margin-bottom: 6px; display: flex; align-items: center; gap: 12px; }
+  .faq-item h4 .q { color: #6366f1; font-weight: 800; flex-shrink: 0; }
+  .faq-item p { color: #94a3b8; font-size: 14px; line-height: 1.75; }
 
-  /* Footer */
-  footer { border-top: 1px solid #1e293b; padding: 40px 0; text-align: center; color: #64748b; font-size: 13px; margin-top: 60px; }
+  /* ── CTA Bottom ── */
+  .cta-section { text-align: center; padding: 80px 0; }
+  .cta-section .card { background: linear-gradient(135deg, #1e1b4b, #1e293b); border: 1px solid #312e81; border-radius: 20px; padding: 56px 32px; }
+  .cta-section h2 { font-size: 32px; margin-bottom: 16px; }
+  .cta-section p { color: #94a3b8; font-size: 17px; margin-bottom: 32px; }
+
+  /* ── Footer ── */
+  footer { border-top: 1px solid #1e293b; padding: 48px 0; text-align: center; color: #64748b; font-size: 13px; }
+  footer .links { margin-bottom: 16px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
   footer a { color: #6366f1; text-decoration: none; }
-  footer .links { margin-bottom: 16px; display: flex; gap: 20px; justify-content: center; }
+  footer a:hover { text-decoration: underline; }
 
   @media (max-width: 768px) {
     .hero h1 { font-size: 32px; }
+    .section-title { font-size: 26px; }
+    .steps { grid-template-columns: 1fr; }
     .pricing-grid { grid-template-columns: 1fr 1fr; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .usecase-grid { grid-template-columns: 1fr; }
+    .stats-bar { gap: 24px; }
+    nav .links { gap: 12px; }
+    nav .links a { font-size: 12px; }
+    nav .links a.cta { padding: 8px 16px; }
+    .hero { padding: 48px 0 40px; }
+    section { padding: 56px 0; }
   }
 </style>
 </head>
 <body>
 
+<!-- Nav -->
 <nav class="container">
-  <div class="logo">🚀 DSeek API</div>
+  <div class="logo"><span class="dot"></span> DSeek API</div>
   <div class="links">
-    <a href="/docs">📖 文档</a>
-    <a href="/recharge">💰 充值</a>
-    <a href="/admin">⚙️ 管理</a>
+    <a href="#features">功能</a>
+    <a href="#pricing">定价</a>
+    <a href="/docs">文档</a>
     <a href="/recharge" class="cta">开始使用</a>
   </div>
 </nav>
 
 <!-- Hero -->
 <section class="hero container">
-  <div class="badge">🎉 新用户注册即送 100 点</div>
-  <h1>DeepSeek 大模型 API<br>开箱即用</h1>
-  <p class="sub">封装 DeepSeek V4 模型，提供 AI 写作、中英翻译、文本摘要三大场景 API。注册即用，按量付费，无需关心模型部署。</p>
+  <div class="badge"><span class="live-dot"></span> 服务运行中 · 新用户注册即送 100 点</div>
+  <h1>DeepSeek 大模型 API<br>一行代码，AI 能力即服务</h1>
+  <p class="sub">封装 DeepSeek 最新模型，提供 7 大 AI 能力：写作、翻译、摘要、对话、代码生成、代码审查、数据分析。RESTful API，Bearer Token 认证，按量付费，10 元起用。</p>
   <div class="btns">
-    <a href="/docs" class="btn btn-primary">📖 查看文档</a>
-    <a href="/recharge" class="btn btn-outline">💰 在线充值</a>
+    <a href="/docs" class="btn btn-primary">📖 查看 API 文档</a>
+    <a href="/recharge" class="btn btn-outline">💰 注册 & 充值</a>
+  </div>
+</section>
+
+<!-- Stats Bar -->
+<div class="stats-bar container">
+  <div class="stat"><div class="num">7</div><div class="lbl">AI 能力端点</div></div>
+  <div class="stat"><div class="num">99.9%</div><div class="lbl">服务可用性</div></div>
+  <div class="stat"><div class="num">¥10</div><div class="lbl">最低充值</div></div>
+  <div class="stat"><div class="num">100</div><div class="lbl">新用户赠送点数</div></div>
+</div>
+
+<!-- How It Works -->
+<section class="container" style="padding-top:90px">
+  <h2 class="section-title">三步开始使用</h2>
+  <p class="section-sub">从注册到调用 API，不超过 2 分钟</p>
+  <div class="steps">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <h3>获取邀请码</h3>
+      <p>联系客服或在推广渠道获取邀请码。邀请码限量发放，保证服务质量。</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <h3>注册 & 充值</h3>
+      <p>使用邀请码注册账号，自动获得 API Key 和 100 点免费额度。选择套餐充值获取更多点数。</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <h3>调用 API</h3>
+      <p>复制 API Key，用 curl、Python 或任何 HTTP 客户端调用。自动扣点，余额不足时提醒。</p>
+    </div>
   </div>
 </section>
 
 <!-- Features -->
-<section class="features container">
-  <h2 class="section-title">三大核心能力</h2>
-  <p class="section-sub">专为中文场景优化的 AI API 服务</p>
+<section class="container" id="features">
+  <h2 class="section-title">七大 AI 能力，一站式接入</h2>
+  <p class="section-sub">无需分别对接多个服务商，一套 API Key 全部搞定</p>
   <div class="feature-grid">
     <div class="feature-card">
-      <div class="icon">✍️</div>
+      <span class="icon">✍️</span>
       <h3>AI 写作</h3>
-      <p>文章、营销文案、社交媒体内容、邮件、演讲稿 — 根据需求自动判断文体，语言流畅自然，避免 AI 痕迹。</p>
+      <p>文章、营销文案、社交媒体内容、邮件、演讲稿。根据需求自动判断文体，语言流畅自然，避免 AI 痕迹。</p>
     </div>
     <div class="feature-card">
-      <div class="icon">🌐</div>
+      <span class="icon">🌐</span>
       <h3>中英翻译</h3>
-      <p>自动识别翻译方向，准确传达原文意思，中文符合中文习惯，英文地道流畅。专业术语准确。</p>
+      <p>自动识别翻译方向，准确传达原文意思。中文符合中文习惯，英文地道流畅，专业术语精准。</p>
     </div>
     <div class="feature-card">
-      <div class="icon">📋</div>
+      <span class="icon">📋</span>
       <h3>文本摘要</h3>
-      <p>长文本提炼，自动输出三种长度：一句话总结、段落摘要、详细摘要。提取核心观点和关键数据。</p>
+      <p>长文本智能提炼，自动输出一句话总结、段落摘要、详细摘要三种长度。提取核心观点和关键数据。</p>
     </div>
     <div class="feature-card">
-      <div class="icon">🔑</div>
-      <h3>简单接入</h3>
-      <p>RESTful API，Bearer Token 认证。注册即得 API Key，curl / Python / JavaScript 一行代码调用。</p>
+      <span class="icon">💬</span>
+      <h3>多轮对话</h3>
+      <p>支持上下文多轮对话，适用于客服机器人、AI 助手、知识问答等场景。保持对话连贯性。</p>
     </div>
     <div class="feature-card">
-      <div class="icon">🛡️</div>
-      <h3>安全可靠</h3>
-      <p>速率限制、输入验证、签名校验。所有 API Key 加密存储，支付回调多重验签。</p>
+      <span class="icon">💻</span>
+      <h3>代码生成</h3>
+      <p>根据自然语言描述生成代码，支持多种编程语言。遵循最佳实践，包含错误处理和中文注释。</p>
     </div>
     <div class="feature-card">
-      <div class="icon">💎</div>
-      <h3>按量付费</h3>
-      <p>点数制计费，用多少扣多少。大额套餐享额外赠送，性价比最高 1元=130点。</p>
+      <span class="icon">🔍</span>
+      <h3>代码审查</h3>
+      <p>智能代码审查，发现潜在 Bug、安全漏洞和性能问题。按严重程度排序，提供具体改进建议和示例代码。</p>
+    </div>
+    <div class="feature-card">
+      <span class="icon">📊</span>
+      <h3>数据分析</h3>
+      <p>从数据中提取洞察，进行统计分析和趋势发现。输出数据概览 → 关键发现 → 详细分析 → 建议。</p>
     </div>
   </div>
 </section>
 
 <!-- Demo -->
-<section class="demo container">
-  <h2 class="section-title">一行命令即可调用</h2>
-  <p class="section-sub">注册 → 获取 Key → 调用 API，三步完成</p>
+<section class="container">
+  <h2 class="section-title">一行命令，即刻体验</h2>
+  <p class="section-sub">注册后获得 API Key，直接调用生产环境</p>
   <div class="demo-box">
-<pre><span class="comment"># 1. 注册获取 API Key</span>
-curl -X POST http://localhost:3456/api/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"myapp", "password":"pass123"}'
+    <div class="demo-header">
+      <span class="d d1"></span><span class="d d2"></span><span class="d d3"></span>
+      <span class="title">Terminal — DeepSeek API Service</span>
+    </div>
+<pre><span class="c"># 1. 注册账号（需邀请码）</span>
+<span class="k">curl</span> -X POST <span class="v">https://deepseek-api-service-production.up.railway.app/api/register</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"username":"myapp","password":"mypass123","invite_code":"你的邀请码"}'</span>
 
-<span class="comment"># 2. 调用 AI 写作</span>
-curl -X POST http://localhost:3456/api/writer \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $API_KEY" \
-  -d '{"input":"写一篇关于人工智能的科普文章"}'</pre>
+<span class="c"># 2. 返回 API Key，立即调用 AI 写作</span>
+<span class="k">curl</span> -X POST <span class="v">https://deepseek-api-service-production.up.railway.app/api/writer</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -H <span class="s">"Authorization: Bearer $API_KEY"</span> \
+  -d <span class="s">'{"input":"写一篇关于人工智能发展趋势的科普文章"}'</span>
+
+<span class="c"># 3. 代码生成示例</span>
+<span class="k">curl</span> -X POST <span class="v">https://deepseek-api-service-production.up.railway.app/api/codegen</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -H <span class="s">"Authorization: Bearer $API_KEY"</span> \
+  -d <span class="s">'{"input":"用Python写一个异步HTTP请求池，支持并发控制和超时","language":"Python"}'</span></pre>
+  </div>
+</section>
+
+<!-- Use Cases -->
+<section class="container">
+  <h2 class="section-title">谁在使用 DSeek API</h2>
+  <p class="section-sub">适用于多种业务场景</p>
+  <div class="usecase-grid">
+    <div class="usecase-card">
+      <h4>📱 独立开发者</h4>
+      <p>快速为你的 App 或网站接入 AI 能力，无需维护 GPU 服务器。按量付费，成本可控，从小项目起步。</p>
+    </div>
+    <div class="usecase-card">
+      <h4>🏢 中小企业</h4>
+      <p>批量生成产品文案、翻译文档、分析用户反馈。一个 API Key 覆盖多种 AI 需求，减少供应商管理成本。</p>
+    </div>
+    <div class="usecase-card">
+      <h4>🤖 AI 创业者</h4>
+      <p>基于 DeepSeek 大模型构建垂直 AI 应用：智能客服、内容生成平台、代码助手。我们处理底层，你专注产品。</p>
+    </div>
+    <div class="usecase-card">
+      <h4>📚 内容创作者</h4>
+      <p>自媒体文章润色、多语言翻译、长文摘要。提升内容生产效率，保持高质量输出。</p>
+    </div>
+    <div class="usecase-card">
+      <h4>🔧 技术团队</h4>
+      <p>代码审查自动化、根据需求生成样板代码、快速原型开发。节省 Code Review 时间，提高代码质量。</p>
+    </div>
+    <div class="usecase-card">
+      <h4>🎓 教育机构</h4>
+      <p>AI 编程教学、语言翻译练习、论文辅助。为学生提供 AI 实践环境，按量计费灵活控制成本。</p>
+    </div>
   </div>
 </section>
 
 <!-- Pricing -->
-<section class="pricing container">
-  <h2 class="section-title">透明定价</h2>
-  <p class="section-sub">按量计费，大额套餐更优惠</p>
+<section class="container" id="pricing">
+  <h2 class="section-title">透明定价，用多少付多少</h2>
+  <p class="section-sub">点数制计费，1点 ≈ ¥0.01 DeepSeek 成本。大额套餐更优惠，最高 1元=130点</p>
   <div class="pricing-grid">
     <div class="price-card">
       <div class="name">🎁 新用户</div>
-      <div class="price" style="font-size:24px">免费</div>
+      <div class="price" style="font-size:26px">免费</div>
       <div class="pts">100 点</div>
       <div class="bonus">注册即送</div>
+      <div class="unit">约 10 次写作调用</div>
     </div>
     <div class="price-card">
       <div class="name">基础包</div>
       <div class="price">¥10 <span>CNY</span></div>
       <div class="pts">1,000 点</div>
       <div class="bonus">&nbsp;</div>
-    </div>
-    <div class="price-card highlight">
-      <div class="name">人气包</div>
-      <div class="price">¥100 <span>CNY</span></div>
-      <div class="pts">10,000 点</div>
-      <div class="bonus">🎁 送 2,000 点</div>
+      <div class="unit">1元=100点</div>
     </div>
     <div class="price-card">
       <div class="name">入门包</div>
       <div class="price">¥50 <span>CNY</span></div>
       <div class="pts">5,000 点</div>
       <div class="bonus">🎁 送 500 点</div>
+      <div class="unit">1元=110点</div>
+    </div>
+    <div class="price-card highlight">
+      <div class="name">人气包</div>
+      <div class="price">¥100 <span>CNY</span></div>
+      <div class="pts">10,000 点</div>
+      <div class="bonus">🎁 送 2,000 点</div>
+      <div class="unit">1元=120点</div>
     </div>
     <div class="price-card">
       <div class="name">专业包</div>
       <div class="price">¥200 <span>CNY</span></div>
       <div class="pts">20,000 点</div>
       <div class="bonus">🎁 送 5,000 点</div>
+      <div class="unit">1元=125点</div>
     </div>
     <div class="price-card">
       <div class="name">企业包</div>
       <div class="price">¥500 <span>CNY</span></div>
       <div class="pts">50,000 点</div>
       <div class="bonus">🎁 送 15,000 点</div>
+      <div class="unit">1元=130点</div>
     </div>
   </div>
 </section>
 
 <!-- FAQ -->
-<section class="faq container">
+<section class="container">
   <h2 class="section-title">常见问题</h2>
-  <p class="section-sub" style="margin-bottom:32px"></p>
-  <div class="faq-item">
-    <h4>1 点等于多少钱？</h4>
-    <p>约 ¥0.01 的 DeepSeek API 成本，对我们收取约 ¥0.10。基础包 1元=100点，大额套餐最高 1元=130点。</p>
+  <p class="section-sub"></p>
+  <div class="faq-list">
+    <div class="faq-item">
+      <h4><span class="q">Q</span> 如何获取邀请码？</h4>
+      <p>目前采用邀请制注册，请联系客服或在推广渠道获取邀请码。我们在控制用户增长以保证服务质量。</p>
+    </div>
+    <div class="faq-item">
+      <h4><span class="q">Q</span> 1 点等于多少钱？</h4>
+      <p>1 点约等于 ¥0.01 的 DeepSeek API 成本。基础包 1元=100点，企业包最高 1元=130点（含赠送）。即你花 1 元，我们给你约 1 元的 DeepSeek API 额度。</p>
+    </div>
+    <div class="faq-item">
+      <h4><span class="q">Q</span> 支持哪些支付方式？</h4>
+      <p>目前支持线下转账（微信/支付宝），转账后提交凭证，管理员审核后点数自动到账。在线支付（XorPay）即将上线。</p>
+    </div>
+    <div class="faq-item">
+      <h4><span class="q">Q</span> API Key 安全吗？</h4>
+      <p>所有 API Key 以 dsk- 开头，使用 bcrypt 加密存储。通过 HTTPS 传输，支持速率限制和输入验证。请妥善保管你的 API Key。</p>
+    </div>
+    <div class="faq-item">
+      <h4><span class="q">Q</span> 免费额度用完了怎么办？</h4>
+      <p>新用户注册赠送 100 点免费额度。用完后可以在充值页面选择套餐进行充值，点数永久有效。</p>
+    </div>
+    <div class="faq-item">
+      <h4><span class="q">Q</span> 调用的模型是什么？</h4>
+      <p>我们封装的是 DeepSeek 最新大模型，具有强大的中文理解和生成能力，支持长文本处理。</p>
+    </div>
   </div>
-  <div class="faq-item">
-    <h4>支持哪些支付方式？</h4>
-    <p>支持微信支付和支付宝扫码支付，通过 XorPay 聚合支付平台处理。</p>
-  </div>
-  <div class="faq-item">
-    <h4>如何获取 API Key？</h4>
-    <p>调用 /api/register 注册账号后自动获取。API Key 以 dsk- 开头，请妥善保管。</p>
-  </div>
-  <div class="faq-item">
-    <h4>有免费试用吗？</h4>
-    <p>有的！新注册用户自动赠送 100 点，可以免费试用所有 API 端点。</p>
+</section>
+
+<!-- CTA -->
+<section class="container cta-section">
+  <div class="card">
+    <h2>准备好开始了吗？</h2>
+    <p>获取邀请码 → 注册 → 调用 API。100 点免费额度等你体验。</p>
+    <div class="btns" style="justify-content:center">
+      <a href="/docs" class="btn btn-white">📖 查看文档</a>
+      <a href="/recharge" class="btn btn-primary">🚀 立即注册</a>
+    </div>
   </div>
 </section>
 
@@ -226,9 +393,11 @@ curl -X POST http://localhost:3456/api/writer \
   <div class="links">
     <a href="/docs">API 文档</a>
     <a href="/recharge">在线充值</a>
-    <a href="/api/health">健康检查</a>
+    <a href="/admin">管理面板</a>
+    <a href="/api/health">服务状态</a>
   </div>
-  <p>Powered by DeepSeek V4 · 按量付费 · 无需关心模型部署</p>
+  <p>Powered by DeepSeek · 按量付费 · 7 大 AI 能力 · 一行代码接入</p>
+  <p style="margin-top:8px;color:#475569">© 2026 DSeek API Service. All rights reserved.</p>
 </footer>
 
 </body>

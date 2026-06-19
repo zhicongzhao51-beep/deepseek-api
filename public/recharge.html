@@ -85,16 +85,35 @@
 
 <div id="toastContainer"></div>
 
-<!-- Login -->
+<!-- Login / Register -->
 <div class="container" id="loginSection">
   <div class="login-box card">
-    <h2>🔐 输入 API Key</h2>
-    <p style="color:#94a3b8;margin-bottom:20px;font-size:14px">输入您的 API Key 查看余额并充值</p>
-    <input type="text" id="apiKeyInput" placeholder="dsk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" onkeydown="if(event.key==='Enter')login()">
-    <button onclick="login()">进入</button>
-    <p style="color:#64748b;margin-top:16px;font-size:12px">
-      还没有账号？<a href="/">注册账号</a>
-    </p>
+    <div class="tab-bar" style="margin-bottom:20px">
+      <div class="tab active" onclick="switchAuthTab('register')">📝 注册新账号</div>
+      <div class="tab" onclick="switchAuthTab('login')">🔑 已有 API Key</div>
+    </div>
+
+    <!-- Register Form -->
+    <div id="authRegister">
+      <p style="color:#94a3b8;margin-bottom:16px;font-size:14px">使用邀请码注册，立即获得 API Key 和 100 点免费额度</p>
+      <input type="text" id="regUsername" placeholder="用户名 (字母数字，3-20位)" onkeydown="if(event.key==='Enter')register()">
+      <input type="password" id="regPassword" placeholder="密码 (至少6位)">
+      <input type="text" id="regInviteCode" placeholder="邀请码 (必填)">
+      <button onclick="register()">🎉 注册并获取 API Key</button>
+      <p style="color:#64748b;margin-top:12px;font-size:12px">
+        注册即表示同意服务条款 · 新用户赠送 100 点
+      </p>
+    </div>
+
+    <!-- Login Form -->
+    <div id="authLogin" class="hidden">
+      <p style="color:#94a3b8;margin-bottom:16px;font-size:14px">输入您的 API Key 查看余额、充值和用量</p>
+      <input type="text" id="apiKeyInput" placeholder="dsk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" onkeydown="if(event.key==='Enter')login()">
+      <button onclick="login()">进入控制台</button>
+      <p style="color:#64748b;margin-top:12px;font-size:12px">
+        API Key 以 dsk- 开头 · 注册后自动获取
+      </p>
+    </div>
   </div>
 </div>
 
@@ -250,6 +269,70 @@ function esc(str) {
   var div = document.createElement('div');
   div.textContent = str || '';
   return div.innerHTML;
+}
+
+// ── Auth Tab Switching ──
+
+function switchAuthTab(tab) {
+  var tabs = document.querySelectorAll('#loginSection .tab-bar .tab');
+  tabs.forEach(function(t) { t.classList.remove('active'); });
+  if (tab === 'register') {
+    tabs[0].classList.add('active');
+    document.getElementById('authRegister').classList.remove('hidden');
+    document.getElementById('authLogin').classList.add('hidden');
+  } else {
+    tabs[1].classList.add('active');
+    document.getElementById('authRegister').classList.add('hidden');
+    document.getElementById('authLogin').classList.remove('hidden');
+  }
+}
+
+// ── Register ──
+
+function register() {
+  var username = document.getElementById('regUsername').value.trim();
+  var password = document.getElementById('regPassword').value;
+  var inviteCode = document.getElementById('regInviteCode').value.trim();
+
+  if (!username || !password || !inviteCode) {
+    toast('请填写所有字段', 'error');
+    return;
+  }
+  if (username.length < 3 || username.length > 20) {
+    toast('用户名需要 3-20 个字符', 'error');
+    return;
+  }
+  if (password.length < 6) {
+    toast('密码至少需要 6 位', 'error');
+    return;
+  }
+
+  fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username, password: password, invite_code: inviteCode }),
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        // Auto-fill the API Key and switch to login
+        document.getElementById('apiKeyInput').value = data.data.api_key;
+        switchAuthTab('login');
+        toast('注册成功！API Key: ' + data.data.api_key + ' | 赠送 ' + data.data.balance + ' 点', 'success');
+
+        // Auto-login
+        API_KEY = data.data.api_key;
+        USER = { username: data.data.username, balance: data.data.balance, api_key: data.data.api_key };
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+        document.getElementById('balanceDisplay').textContent = data.data.balance;
+        loadPaymentMethods();
+        loadHistory();
+      } else {
+        toast(data.error || '注册失败', 'error');
+      }
+    })
+    .catch(function() { toast('网络错误，请稍后重试', 'error'); });
 }
 
 // ── Login ──
