@@ -104,6 +104,9 @@ const PROMPTS = Object.freeze({
 
 const app = express();
 
+// Trust Railway proxy (fixes express-rate-limit X-Forwarded-For warning)
+app.set('trust proxy', 1);
+
 // Security headers (helmet) — permissive CSP for admin panel inline scripts
 app.use(helmet({
   contentSecurityPolicy: {
