@@ -1,0 +1,20 @@
+# Railway Deployment Configuration
+# DeepSeek API Service — Node.js + SQL.js
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+numReplicas = 1
+healthcheckPath = "/api/health"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[service]
+port = 3456
+
+# Persistent volume for SQLite database
+[volumes]
+[volumes.data]
+mountPath = "/app/data"
