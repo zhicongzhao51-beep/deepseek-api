@@ -43,13 +43,6 @@ async function init() {
     db.run('PRAGMA synchronous=NORMAL');
     db.run('PRAGMA foreign_keys=ON');
 
-    // Migrations: add columns that may not exist in older DBs
-    const addColumn = (table, colDef) => {
-      try { db.run(`ALTER TABLE ${table} ADD COLUMN ${colDef}`); } catch (_) { /* already exists */ }
-    };
-    addColumn('payment_orders', 'transaction_id TEXT');
-    addColumn('payment_orders', 'proof_note TEXT');
-
     // Create tables
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
@@ -86,12 +79,21 @@ async function init() {
         bonus_points INTEGER NOT NULL DEFAULT 0,
         provider TEXT NOT NULL DEFAULT 'xorpay',
         provider_charge_id TEXT,
+        transaction_id TEXT,
+        proof_note TEXT DEFAULT '',
         status TEXT NOT NULL DEFAULT 'pending',
         paid_at TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
     `);
+
+    // Migrations: add columns that may not exist in older DBs
+    const addColumn = (table, colDef) => {
+      try { db.run(`ALTER TABLE ${table} ADD COLUMN ${colDef}`); } catch (_) { /* already exists */ }
+    };
+    addColumn('payment_orders', 'transaction_id TEXT');
+    addColumn('payment_orders', 'proof_note TEXT DEFAULT \'\'');
 
     db.run(`
       CREATE TABLE IF NOT EXISTS invite_codes (
