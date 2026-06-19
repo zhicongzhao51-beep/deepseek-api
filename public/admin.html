@@ -68,6 +68,8 @@
   <div class="tab-bar">
     <div class="tab active" onclick="switchTab('users')">👥 用户管理</div>
     <div class="tab" onclick="switchTab('usage')">📊 用量统计</div>
+    <div class="tab" onclick="switchTab('orders')">💳 订单审核</div>
+    <div class="tab" onclick="switchTab('invites')">🎫 邀请码</div>
   </div>
 
   <div id="tabUsers">
@@ -100,6 +102,42 @@
       <h2>📊 用量汇总</h2>
       <table id="usageTable">
         <thead><tr><th>用户名</th><th>端点</th><th>调用次数</th><th>Prompt Tokens</th><th>Completion Tokens</th><th>消耗点数</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tabOrders" class="hidden">
+    <div class="card">
+      <h2>✅ 待审核订单</h2>
+      <p style="color:#94a3b8;font-size:13px;margin-bottom:16px">用户线下转账后提交的凭证，审核通过后点数自动到账</p>
+      <table id="pendingOrdersTable">
+        <thead><tr><th>订单号</th><th>用户</th><th>套餐</th><th>金额</th><th>点数</th><th>交易单号</th><th>备注</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tabInvites" class="hidden">
+    <div class="card">
+      <h2>🎫 生成邀请码</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>最大使用次数</label>
+          <input type="number" id="inviteMaxUses" placeholder="1" min="1" max="1000" value="1">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>备注（可选）</label>
+          <input type="text" id="inviteNote" placeholder="例如：给张三的邀请码" style="width:100%">
+        </div>
+        <button onclick="createInvite()">🎫 生成邀请码</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 所有邀请码</h2>
+      <table id="inviteTable">
+        <thead><tr><th>邀请码</th><th>最大使用</th><th>已使用</th><th>状态</th><th>备注</th><th>创建时间</th><th>操作</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -222,8 +260,147 @@ function recharge() {
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('[id^="tab"]').forEach(el => el.classList.add('hidden'));
-  document.querySelector(`.tab:nth-child(${tab === 'users' ? 1 : 2})`).classList.add('active');
-  document.getElementById(`tab${tab === 'users' ? 'Users' : 'Usage'}`).classList.remove('hidden');
+  const idx = tab === 'users' ? 1 : tab === 'usage' ? 2 : tab === 'orders' ? 3 : 4;
+  document.querySelector(`.tab:nth-child(${idx})`).classList.add('active');
+  const tabId = tab === 'users' ? 'tabUsers' : tab === 'usage' ? 'tabUsage' : tab === 'orders' ? 'tabOrders' : 'tabInvites';
+  document.getElementById(tabId).classList.remove('hidden');
+  if (tab === 'invites') refreshInvites();
+  if (tab === 'orders') refreshPendingOrders();
+}
+
+function createInvite() {
+  const maxUses = parseInt(document.getElementById('inviteMaxUses').value) || 1;
+  const note = document.getElementById('inviteNote').value.trim();
+
+  fetch('/api/admin/invite-codes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+    body: JSON.stringify({ max_uses: maxUses, note }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        toast(`邀请码已生成: ${data.data.code}`);
+        document.getElementById('inviteNote').value = '';
+        refreshInvites();
+      } else {
+        toast(data.error, 'error');
+      }
+    });
+}
+
+function refreshInvites() {
+  fetch('/api/admin/invite-codes', { headers: { 'x-admin-key': ADMIN_KEY } })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) renderInvites(data.data.invite_codes);
+    });
+}
+
+function renderInvites(codes) {
+  const tbody = document.querySelector('#inviteTable tbody');
+  if (!codes.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:40px">暂无邀请码</td></tr>';
+    return;
+  }
+  tbody.innerHTML = codes.map(c => `
+    <tr>
+      <td><span class="code-block">${esc(c.code)}</span></td>
+      <td>${c.max_uses}</td>
+      <td>${c.used_count}</td>
+      <td><span class="badge ${c.is_active ? 'badge-green' : 'badge-red'}">${c.is_active ? '有效' : '已失效'}</span></td>
+      <td>${esc(c.note || '-')}</td>
+      <td>${esc(c.created_at)}</td>
+      <td>${c.is_active ? `<button class="secondary" onclick="disableInvite('${esc(c.code)}')" style="padding:4px 10px;font-size:12px">禁用</button>` : '-'}</td>
+    </tr>
+  `).join('');
+}
+
+function disableInvite(code) {
+  if (!confirm(`确定要禁用邀请码 ${code} 吗？`)) return;
+  fetch('/api/admin/invite-codes/disable', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+    body: JSON.stringify({ code }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        toast(`邀请码 ${code} 已禁用`);
+        refreshInvites();
+      } else {
+        toast(data.error, 'error');
+      }
+    });
+}
+
+function refreshPendingOrders() {
+  fetch('/api/payments/admin/pending', { headers: { 'x-admin-key': ADMIN_KEY } })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) renderPendingOrders(data.data.orders);
+    });
+}
+
+function renderPendingOrders(orders) {
+  const tbody = document.querySelector('#pendingOrdersTable tbody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#64748b;padding:40px">暂无待审核订单</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(o => `
+    <tr>
+      <td><span style="font-family:monospace;font-size:12px">${esc(o.order_no)}</span></td>
+      <td><strong>${esc(o.username)}</strong></td>
+      <td>${esc(o.package_id)}</td>
+      <td>¥${o.amount}</td>
+      <td>${o.points.toLocaleString()}${o.bonus_points > 0 ? ' +' + o.bonus_points.toLocaleString() : ''}</td>
+      <td>${esc(o.transaction_id || '-')}</td>
+      <td>${esc(o.proof_note || '-')}</td>
+      <td>${esc(o.created_at)}</td>
+      <td>
+        <button onclick="approveOrder('${esc(o.order_no)}')" style="padding:4px 10px;font-size:12px;background:#065f46;border-color:#065f46;margin-right:4px">✅ 确认</button>
+        <button onclick="rejectOrder('${esc(o.order_no)}')" class="secondary" style="padding:4px 10px;font-size:12px">❌ 驳回</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function approveOrder(orderNo) {
+  if (!confirm(`确定确认收款，为订单 ${orderNo} 充值吗？`)) return;
+  fetch('/api/payments/admin/approve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+    body: JSON.stringify({ order_no: orderNo }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        toast(data.message);
+        refreshPendingOrders();
+        refreshData();
+      } else {
+        toast(data.error, 'error');
+      }
+    });
+}
+
+function rejectOrder(orderNo) {
+  if (!confirm(`确定驳回订单 ${orderNo} 吗？用户可重新提交凭证。`)) return;
+  fetch('/api/payments/admin/reject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+    body: JSON.stringify({ order_no: orderNo }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        toast(data.message);
+        refreshPendingOrders();
+      } else {
+        toast(data.error, 'error');
+      }
+    });
 }
 
 function esc(str) {

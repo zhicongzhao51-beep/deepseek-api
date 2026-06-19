@@ -10,11 +10,6 @@ const router = express.Router();
 
 // ── Helpers ─────────────────────────────────────────────────
 
-/**
- * Generate a human-readable order number.
- * Format: ORD-YYYYMMDD-XXXX (6 random chars)
- * @returns {string}
- */
 function generateOrderNo() {
   const now = new Date();
   const date = now.toISOString().slice(0, 10).replace(/-/g, '');
@@ -24,16 +19,26 @@ function generateOrderNo() {
 
 // ── Routes: Public ──────────────────────────────────────────
 
-/**
- * GET /api/payments/packages
- * Returns available recharge packages. No auth required.
- */
 router.get('/packages', (_req, res) => {
   res.json({
     success: true,
     data: {
       currency: 'cny',
       packages: config.pointsPackages,
+      payment_methods: [
+        {
+          id: 'manual',
+          name: '线下转账',
+          description: '向管理员转账后提交凭证，管理员确认后到账',
+          payee: config.manualPaymentInfo || '请联系管理员获取收款信息',
+        },
+        {
+          id: 'xorpay',
+          name: '在线支付',
+          description: '微信/支付宝扫码支付，自动到账',
+          available: !!(config.xorpayAppId && config.xorpayAppSecret),
+        },
+      ],
     },
   });
 });
@@ -44,68 +49,119 @@ const requireAuth = mw.requireApiKey({ getUserByApiKey: require('../db').getUser
 
 /**
  * POST /api/payments/create-order
- * Creates a payment order and returns XorPay QR code URL.
- * Requires valid API key.
+ * Creates a payment order. Supports 'manual' (offline) and 'xorpay' (auto) methods.
  */
 router.post('/create-order',
   mw.authLimiter,
   requireAuth,
   mw.validate(mw.schemas.createPaymentOrderSchema),
   async (req, res) => {
-    const { package_id } = req.body;
+    const { package_id, method } = req.body;
     const db = require('../db');
+    const paymentMethod = method || 'manual';
 
-    // Find the selected package
     const pkg = config.pointsPackages.find(p => p.id === package_id);
     if (!pkg) {
       return res.status(400).json({ success: false, error: '无效的套餐 ID' });
     }
 
-    // Generate order
     const orderNo = generateOrderNo();
 
     try {
-      // Create order in DB (status: pending)
-      db.createPaymentOrder(req.user.id, pkg, orderNo);
+      if (paymentMethod === 'xorpay') {
+        // ── XorPay Online Payment ──
+        if (!config.xorpayAppId || !config.xorpayAppSecret) {
+          return res.status(400).json({ success: false, error: '在线支付暂未开通，请使用线下转账' });
+        }
 
-      // Call XorPay to get QR code
-      const result = await xorpay.createPayment({
-        appId: config.xorpayAppId,
-        appSecret: config.xorpayAppSecret,
-        orderNo,
-        amount: pkg.amount,
-        notifyUrl: config.xorpayNotifyUrl,
-        name: `DeepSeek API - ${pkg.label}`,
-      });
+        db.createPaymentOrder(req.user.id, pkg, orderNo, 'xorpay');
 
-      // Update with provider charge_id (still pending, just linking)
-      db.getPaymentOrder(orderNo); // ensure it exists
-
-      logger.info({
-        userId: req.user.id,
-        orderNo,
-        packageId: package_id,
-        amount: pkg.amount,
-        points: pkg.points,
-        requestId: req.requestId,
-      }, 'Payment order created');
-
-      res.json({
-        success: true,
-        data: {
-          order_no: orderNo,
-          package_label: pkg.label,
+        const result = await xorpay.createPayment({
+          appId: config.xorpayAppId,
+          appSecret: config.xorpayAppSecret,
+          orderNo,
           amount: pkg.amount,
-          points: pkg.points,
-          bonus_points: pkg.bonus || 0,
-          qr_url: result.qr_url,
-          charge_id: result.charge_id,
-        },
-      });
+          notifyUrl: config.xorpayNotifyUrl,
+          name: `DeepSeek API - ${pkg.label}`,
+        });
+
+        logger.info({ userId: req.user.id, orderNo, method: 'xorpay', amount: pkg.amount, requestId: req.requestId }, 'XorPay order created');
+
+        res.json({
+          success: true,
+          data: {
+            order_no: orderNo,
+            method: 'xorpay',
+            package_label: pkg.label,
+            amount: pkg.amount,
+            points: pkg.points,
+            bonus_points: pkg.bonus || 0,
+            qr_url: result.qr_url,
+            charge_id: result.charge_id,
+          },
+        });
+      } else {
+        // ── Manual/Offline Payment ──
+        db.createPaymentOrder(req.user.id, pkg, orderNo, 'manual');
+
+        logger.info({ userId: req.user.id, orderNo, method: 'manual', amount: pkg.amount, requestId: req.requestId }, 'Manual payment order created');
+
+        res.json({
+          success: true,
+          data: {
+            order_no: orderNo,
+            method: 'manual',
+            package_label: pkg.label,
+            amount: pkg.amount,
+            points: pkg.points,
+            bonus_points: pkg.bonus || 0,
+            payee_info: config.manualPaymentInfo || '请联系管理员获取收款信息',
+            next_step: '完成转账后，请提交转账凭证（交易单号或截图说明）',
+          },
+        });
+      }
     } catch (err) {
       logger.error({ err, orderNo, userId: req.user.id, requestId: req.requestId }, 'Failed to create payment order');
       res.status(500).json({ success: false, error: '创建支付订单失败，请稍后重试' });
     }
+  }
+);
+
+/**
+ * POST /api/payments/submit-proof
+ * User submits payment proof for a manual order.
+ */
+router.post('/submit-proof',
+  mw.authLimiter,
+  requireAuth,
+  mw.validate(mw.schemas.submitProofSchema),
+  (req, res) => {
+    const db = require('../db');
+    const { order_no, transaction_id, proof_note } = req.body;
+
+    const order = db.getPaymentOrder(order_no);
+    if (!order) {
+      return res.status(404).json({ success: false, error: '订单不存在' });
+    }
+    if (order.user_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: '无权操作此订单' });
+    }
+    if (order.provider !== 'manual') {
+      return res.status(400).json({ success: false, error: '此订单为在线支付订单，无需提交凭证' });
+    }
+    if (order.status !== 'pending') {
+      return res.status(400).json({ success: false, error: '订单状态不允许提交凭证' });
+    }
+
+    db.submitPaymentProof(order_no, transaction_id, proof_note);
+
+    logger.info({ userId: req.user.id, orderNo: order_no, transactionId: transaction_id, requestId: req.requestId }, 'Payment proof submitted');
+
+    res.json({
+      success: true,
+      message: '凭证已提交，请等待管理员审核',
+      data: { order_no, status: 'submitted' },
+    });
   }
 );
 
@@ -121,7 +177,6 @@ router.get('/order/:orderNo', requireAuth, (req, res) => {
     return res.status(404).json({ success: false, error: '订单不存在' });
   }
 
-  // Only the owner or admin can view
   if (order.user_id !== req.user.id) {
     return res.status(403).json({ success: false, error: '无权查看此订单' });
   }
@@ -135,6 +190,8 @@ router.get('/order/:orderNo', requireAuth, (req, res) => {
       points: order.points,
       bonus_points: order.bonus_points,
       status: order.status,
+      provider: order.provider,
+      transaction_id: order.transaction_id,
       paid_at: order.paid_at,
       created_at: order.created_at,
     },
@@ -158,29 +215,80 @@ router.get('/orders', requireAuth, (req, res) => {
   });
 });
 
-// ── Routes: Webhook (XorPay signature) ─────────────────────
+// ── Routes: Admin Order Review ─────────────────────────────
 
 /**
- * POST /api/payments/notify
- * XorPay payment callback.
- * No API key required — verified by XorPay MD5 signature.
- *
- * IMPORTANT: This route needs the raw body for signature verification.
- * The raw body is captured via express.json({ verify: ... }) in server.js
- * and stored in req.rawBody.
+ * GET /api/payments/admin/pending
+ * Admin: list orders awaiting review (submitted manual payments).
  */
+router.get('/admin/pending', mw.adminLimiter, mw.requireAdmin, (_req, res) => {
+  const db = require('../db');
+  const orders = db.getPendingProofOrders();
+  res.json({ success: true, data: { orders } });
+});
+
+/**
+ * POST /api/payments/admin/approve
+ * Admin: approve a manual payment order (adds points to user).
+ */
+router.post('/admin/approve',
+  mw.adminLimiter,
+  mw.requireAdmin,
+  mw.validate(mw.schemas.approveOrderSchema),
+  (req, res) => {
+    const db = require('../db');
+    const { order_no } = req.body;
+
+    const result = db.adminApproveOrder(order_no);
+    if (!result) {
+      return res.status(400).json({ success: false, error: '订单不存在或状态不允许审核' });
+    }
+
+    logger.info({ orderNo: order_no, userId: result.userId, points: result.points }, 'Admin approved payment order');
+
+    res.json({
+      success: true,
+      message: `已确认收款，${result.points} 点已到账`,
+      data: { order_no, points_added: result.points },
+    });
+  }
+);
+
+/**
+ * POST /api/payments/admin/reject
+ * Admin: reject a manual payment proof (returns order to pending).
+ */
+router.post('/admin/reject',
+  mw.adminLimiter,
+  mw.requireAdmin,
+  mw.validate(mw.schemas.approveOrderSchema),
+  (req, res) => {
+    const db = require('../db');
+    const { order_no } = req.body;
+
+    db.adminRejectOrder(order_no);
+
+    logger.info({ orderNo: order_no }, 'Admin rejected payment proof');
+
+    res.json({
+      success: true,
+      message: '已驳回，订单恢复为待支付状态',
+      data: { order_no },
+    });
+  }
+);
+
+// ── Routes: Webhook (XorPay signature) ─────────────────────
+
 router.post('/notify', (req, res) => {
   const db = require('../db');
 
-  // Parse raw body for signature verification
-  /** @type {string|Buffer|undefined} */
   const rawBody = req.rawBody;
   if (!rawBody) {
     logger.error('Payment notify: missing raw body');
     return res.status(400).send('fail');
   }
 
-  // Parse the form-encoded callback body
   let params;
   try {
     const bodyStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
@@ -196,10 +304,8 @@ router.post('/notify', (req, res) => {
     return res.status(400).send('fail');
   }
 
-  // Remove sign from params for verification
   const { sign: _sign, ...paramsWithoutSign } = params;
 
-  // Verify signature
   if (!xorpay.verifySignature(paramsWithoutSign, receivedSign, config.xorpayAppSecret)) {
     logger.error({ orderNo: params.out_trade_no }, 'Payment notify: invalid signature');
     return res.status(403).send('fail');
@@ -209,39 +315,30 @@ router.post('/notify', (req, res) => {
   const chargeId = params.charge_id || '';
   const totalFee = parseInt(params.total_fee) || 0;
 
-  // Look up order
   const order = db.getPaymentOrder(orderNo);
   if (!order) {
     logger.error({ orderNo }, 'Payment notify: order not found');
     return res.status(404).send('fail');
   }
 
-  // Verify amount matches (prevent tampering)
-  const expectedFee = Math.round(order.amount * 100); // cents
+  const expectedFee = Math.round(order.amount * 100);
   if (totalFee !== expectedFee) {
     logger.error({ orderNo, expectedFee, receivedFee: totalFee }, 'Payment notify: amount mismatch');
     return res.status(400).send('fail');
   }
 
-  // Idempotent completion: only process if pending
   const completed = db.completePaymentOrder(orderNo, chargeId);
   if (!completed) {
-    // Already processed — return success to stop XorPay retry
     logger.info({ orderNo }, 'Payment notify: order already processed (idempotent)');
     return res.send('success');
   }
 
-  // Add points to user balance (atomic with order completion)
   db.addBalance(order.user_id, order.points + (order.bonus_points || 0));
 
   logger.info({
-    orderNo,
-    userId: order.user_id,
-    amount: order.amount,
-    points: order.points,
-    bonus: order.bonus_points,
-    chargeId,
-  }, 'Payment completed successfully');
+    orderNo, userId: order.user_id, amount: order.amount,
+    points: order.points, bonus: order.bonus_points, chargeId,
+  }, 'Payment completed successfully (XorPay)');
 
   res.send('success');
 });

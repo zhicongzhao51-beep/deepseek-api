@@ -10,6 +10,7 @@ const config = require('./config');
 const registerSchema = z.object({
   username: z.string().min(3, '用户名至少3个字符').max(32, '用户名最多32个字符'),
   password: z.string().min(6, '密码至少6个字符').max(128, '密码最多128个字符'),
+  invite_code: z.string().min(1, '请提供邀请码').max(32, '邀请码格式无效'),
 });
 
 const loginSchema = z.object({
@@ -29,6 +30,7 @@ const rechargeSchema = z.object({
 
 const createPaymentOrderSchema = z.object({
   package_id: z.string().min(1, '请选择充值套餐'),
+  method: z.enum(['manual', 'xorpay']).optional().default('manual'),
 });
 
 const chatSchema = z.object({
@@ -38,6 +40,36 @@ const chatSchema = z.object({
   })).min(1).max(50),
   max_tokens: z.number().int().min(1).max(8192).optional().default(2048),
   temperature: z.number().min(0).max(2).optional().default(0.7),
+});
+
+const createInviteCodeSchema = z.object({
+  max_uses: z.number().int().min(1).max(1000).optional().default(1),
+  note: z.string().max(200).optional().default(''),
+});
+
+const disableInviteCodeSchema = z.object({
+  code: z.string().min(1, '请提供邀请码'),
+});
+
+const codeGenSchema = z.object({
+  input: z.string().min(1, '请提供编程需求描述').max(50000, '输入内容过长'),
+  language: z.string().max(20).optional().default('auto'),
+  max_tokens: z.number().int().min(1).max(8192).optional().default(4096),
+});
+
+const dataAnalysisSchema = z.object({
+  input: z.string().min(1, '请提供需要分析的数据').max(50000, '输入内容过长'),
+  max_tokens: z.number().int().min(1).max(8192).optional().default(4096),
+});
+
+const submitProofSchema = z.object({
+  order_no: z.string().min(1, '请提供订单号'),
+  transaction_id: z.string().min(1, '请提供交易单号').max(128),
+  proof_note: z.string().max(500).optional().default(''),
+});
+
+const approveOrderSchema = z.object({
+  order_no: z.string().min(1, '请提供订单号'),
 });
 
 // ── Validation Middleware Factory ────────────────────────────
@@ -157,7 +189,7 @@ function requestId(req, _res, next) {
 // ── Exports ─────────────────────────────────────────────────
 
 module.exports = {
-  schemas: { registerSchema, loginSchema, aiEndpointSchema, rechargeSchema, createPaymentOrderSchema, chatSchema },
+  schemas: { registerSchema, loginSchema, aiEndpointSchema, rechargeSchema, createPaymentOrderSchema, chatSchema, createInviteCodeSchema, disableInviteCodeSchema, codeGenSchema, dataAnalysisSchema, submitProofSchema, approveOrderSchema },
   validate,
   requireApiKey,
   requireAdmin,

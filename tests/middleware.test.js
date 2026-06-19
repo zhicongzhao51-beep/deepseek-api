@@ -26,7 +26,7 @@ describe('middleware.js', () => {
   describe('validate', () => {
     it('calls next() when body is valid', () => {
       const { registerSchema } = mw.schemas;
-      const req = mockReq({ username: 'testuser', password: 'pass123' });
+      const req = mockReq({ username: 'testuser', password: 'pass123', invite_code: 'ABC12345' });
       const res = mockRes();
       const next = jest.fn();
 
@@ -37,7 +37,7 @@ describe('middleware.js', () => {
 
     it('returns 400 when body is invalid', () => {
       const { registerSchema } = mw.schemas;
-      const req = mockReq({ username: 'ab', password: '12' });
+      const req = mockReq({ username: 'ab', password: '12', invite_code: '' });
       const res = mockRes();
       const next = jest.fn();
 

@@ -17,14 +17,17 @@
   .login-box input:focus { outline: none; border-color: #6366f1; }
   .login-box button, button { background: #6366f1; border: 1px solid #6366f1; cursor: pointer; font-weight: 600; color: white; padding: 10px 20px; border-radius: 8px; font-size: 14px; }
   .login-box button:hover, button:hover { background: #5558e6; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
   button.secondary { background: transparent; border-color: #475569; color: #94a3b8; }
+  button.danger { background: #7f1d1d; border-color: #7f1d1d; }
   .hidden { display: none !important; }
   .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
   .badge-green { background: #065f46; color: #6ee7b7; }
   .badge-yellow { background: #713f12; color: #fcd34d; }
   .badge-blue { background: #1e3a5f; color: #93c5fd; }
   .badge-red { background: #7f1d1d; color: #fca5a5; }
-  .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .badge-purple { background: #3b0764; color: #c084fc; }
+  .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
   .balance-display { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 20px; display: inline-flex; align-items: center; gap: 8px; }
   .balance-display .label { font-size: 13px; color: #94a3b8; }
   .balance-display .value { font-size: 24px; font-weight: 700; color: #6ee7b7; }
@@ -41,12 +44,24 @@
   .qr-section img { border: 12px solid white; border-radius: 12px; margin-bottom: 16px; width: 220px; height: 220px; }
   .qr-section .amount { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
   .qr-section .hint { color: #94a3b8; font-size: 13px; margin-bottom: 16px; }
-  .order-info { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; display: inline-block; text-align: left; margin-bottom: 16px; }
+  .order-info { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; display: inline-block; text-align: left; margin-bottom: 16px; min-width: 320px; }
   .order-info div { font-size: 13px; color: #94a3b8; line-height: 1.8; }
   .order-info span { color: #e2e8f0; font-family: monospace; }
+  .payee-box { background: #0f172a; border: 2px solid #6366f1; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; text-align: left; }
+  .payee-box h4 { color: #6366f1; margin-bottom: 8px; }
+  .payee-box pre { white-space: pre-wrap; font-size: 14px; color: #e2e8f0; line-height: 1.8; }
+  .proof-form { text-align: left; max-width: 480px; margin: 0 auto; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+  .form-group input, .form-group textarea { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 14px; }
+  .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #6366f1; }
+  .form-group textarea { resize: vertical; min-height: 60px; }
   .paid-section { text-align: center; padding: 30px; }
   .paid-section .icon { font-size: 64px; margin-bottom: 16px; }
   .paid-section .msg { font-size: 20px; font-weight: 700; color: #6ee7b7; margin-bottom: 8px; }
+  .submitted-section { text-align: center; padding: 30px; }
+  .submitted-section .icon { font-size: 64px; margin-bottom: 16px; }
+  .submitted-section .msg { font-size: 20px; font-weight: 700; color: #fcd34d; margin-bottom: 8px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #334155; color: #94a3b8; font-weight: 600; }
   td { padding: 10px 8px; border-bottom: 1px solid #1e293b; }
@@ -60,14 +75,17 @@
   .tab.active { background: #6366f1; color: white; }
   a { color: #6366f1; text-decoration: none; }
   a:hover { text-decoration: underline; }
+  .method-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .method-tab { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #94a3b8; border: 1px solid #334155; background: transparent; }
+  .method-tab.active { background: #6366f1; color: white; border-color: #6366f1; }
+  .method-tab.unavailable { opacity: 0.5; cursor: not-allowed; }
 </style>
 </head>
 <body>
 
-<!-- Toast Container -->
 <div id="toastContainer"></div>
 
-<!-- Login Overlay -->
+<!-- Login -->
 <div class="container" id="loginSection">
   <div class="login-box card">
     <h2>🔐 输入 API Key</h2>
@@ -80,12 +98,12 @@
   </div>
 </div>
 
-<!-- Main Content -->
+<!-- Main -->
 <div class="container hidden" id="mainContent">
   <div class="header-bar">
     <div>
       <h1>💰 在线充值</h1>
-      <p class="subtitle">选择套餐，扫码支付，点数自动到账</p>
+      <p class="subtitle">选择套餐，扫码或转账后点数自动到账</p>
     </div>
     <div class="balance-display">
       <span class="label">当前余额</span>
@@ -101,7 +119,12 @@
 
   <!-- Recharge Tab -->
   <div id="tabRecharge">
+    <!-- Payment Method Selection -->
     <div id="stepPackages">
+      <div class="card">
+        <h2>💳 支付方式</h2>
+        <div class="method-tabs" id="methodTabs"></div>
+      </div>
       <div class="card">
         <h2>📦 选择充值套餐</h2>
         <div class="packages-grid" id="packagesGrid"></div>
@@ -111,7 +134,8 @@
       </div>
     </div>
 
-    <div id="stepPayment" class="hidden">
+    <!-- Online: QR Code -->
+    <div id="stepOnline" class="hidden">
       <div class="card">
         <h2>📱 扫码支付</h2>
         <div class="qr-section">
@@ -130,6 +154,54 @@
       </div>
     </div>
 
+    <!-- Offline: Manual Transfer -->
+    <div id="stepManual" class="hidden">
+      <div class="card">
+        <h2>🏦 线下转账</h2>
+        <div class="payee-box">
+          <h4>📋 收款信息</h4>
+          <pre id="payeeInfo"></pre>
+          <p style="color:#f59e0b;font-size:13px;margin-top:8px">转账时请备注订单号: <strong id="manualOrderNo" style="font-family:monospace"></strong></p>
+        </div>
+        <div class="order-info" style="display:block;width:100%">
+          <div>订单号: <span id="manualOrderNo2"></span></div>
+          <div>套餐: <span id="manualOrderPackage"></span></div>
+          <div>金额: <span id="manualOrderAmount"></span></div>
+          <div>到账点数: <span id="manualOrderPoints"></span></div>
+        </div>
+
+        <div style="margin-top:20px">
+          <h4 style="margin-bottom:12px">📝 提交转账凭证</h4>
+          <div class="proof-form">
+            <div class="form-group">
+              <label>交易单号 / 转账备注 *</label>
+              <input type="text" id="transactionId" placeholder="微信/支付宝交易单号或转账备注">
+            </div>
+            <div class="form-group">
+              <label>补充说明（选填）</label>
+              <textarea id="proofNote" placeholder="如：已转账，请查收"></textarea>
+            </div>
+            <button id="submitProofBtn" onclick="submitProof()">📤 提交凭证</button>
+            <button class="secondary" style="margin-left:8px" onclick="cancelPayment()">取消</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submitted -->
+    <div id="stepSubmitted" class="hidden">
+      <div class="card">
+        <div class="submitted-section">
+          <div class="icon">⏳</div>
+          <div class="msg">凭证已提交，等待审核</div>
+          <p style="color:#94a3b8;margin-bottom:8px" id="submittedDetail"></p>
+          <p style="color:#64748b;font-size:13px">管理员审核通过后，点数将自动到账</p>
+          <button onclick="resetToPackages()" style="margin-top:16px">继续充值</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paid -->
     <div id="stepPaid" class="hidden">
       <div class="card">
         <div class="paid-section">
@@ -147,7 +219,7 @@
     <div class="card">
       <h2>📋 充值记录</h2>
       <table id="historyTable">
-        <thead><tr><th>订单号</th><th>套餐</th><th>金额(元)</th><th>点数</th><th>赠送</th><th>状态</th><th>时间</th></tr></thead>
+        <thead><tr><th>订单号</th><th>套餐</th><th>金额</th><th>点数</th><th>方式</th><th>状态</th><th>时间</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -155,16 +227,19 @@
 </div>
 
 <script>
-let API_KEY = '';
-let USER = null;
-let selectedPackageId = null;
-let currentOrderNo = null;
-let pollTimer = null;
-let packages = [];
+var API_KEY = '';
+var USER = null;
+var selectedPackageId = null;
+var selectedMethod = 'manual';
+var currentOrderNo = null;
+var currentOrderData = null;
+var pollTimer = null;
+var packages = [];
+var hasXorpay = false;
 
 function toast(msg, type) {
   type = type || 'success';
-  const el = document.createElement('div');
+  var el = document.createElement('div');
   el.className = 'toast toast-' + type;
   el.textContent = msg;
   document.getElementById('toastContainer').appendChild(el);
@@ -172,7 +247,7 @@ function toast(msg, type) {
 }
 
 function esc(str) {
-  const div = document.createElement('div');
+  var div = document.createElement('div');
   div.textContent = str || '';
   return div.innerHTML;
 }
@@ -180,7 +255,7 @@ function esc(str) {
 // ── Login ──
 
 function login() {
-  const key = document.getElementById('apiKeyInput').value.trim();
+  var key = document.getElementById('apiKeyInput').value.trim();
   if (!key) { toast('请输入 API Key', 'error'); return; }
   API_KEY = key;
 
@@ -192,26 +267,58 @@ function login() {
         document.getElementById('loginSection').classList.add('hidden');
         document.getElementById('mainContent').classList.remove('hidden');
         document.getElementById('balanceDisplay').textContent = data.data.balance;
-        loadPackages();
+        loadPaymentMethods();
         loadHistory();
       } else {
         toast(data.error || '无效的 API Key', 'error');
       }
     })
-    .catch(function() { toast('连接失败，请检查服务是否启动', 'error'); });
+    .catch(function() { toast('连接失败', 'error'); });
 }
 
-// ── Packages ──
+// ── Payment Methods ──
 
-function loadPackages() {
+function loadPaymentMethods() {
   fetch('/api/payments/packages')
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.success) {
         packages = data.data.packages;
         renderPackages(data.data.packages);
+        // Check which methods are available
+        var methods = data.data.payment_methods || [];
+        hasXorpay = methods.some(function(m) { return m.id === 'xorpay' && m.available; });
+        renderMethodTabs(methods);
       }
     });
+}
+
+function renderMethodTabs(methods) {
+  var html = '';
+  methods.forEach(function(m) {
+    var cls = 'method-tab';
+    if (m.id === selectedMethod) cls += ' active';
+    if (m.id === 'xorpay' && !m.available) {
+      cls += ' unavailable';
+      html += '<div class="' + cls + '" title="' + esc(m.description) + '">' + esc(m.name) + ' (暂未开通)</div>';
+    } else {
+      html += '<div class="' + cls + '" onclick="selectMethod(\'' + m.id + '\')">' + esc(m.name) + '</div>';
+    }
+  });
+  document.getElementById('methodTabs').innerHTML = html;
+}
+
+function selectMethod(method) {
+  if (method === 'xorpay' && !hasXorpay) {
+    toast('在线支付暂未开通，请使用线下转账', 'error');
+    return;
+  }
+  selectedMethod = method;
+  // Update visual
+  var tabs = document.querySelectorAll('#methodTabs .method-tab');
+  tabs.forEach(function(t) { t.classList.remove('active'); });
+  var idx = method === 'manual' ? 0 : 1;
+  if (tabs[idx] && !tabs[idx].classList.contains('unavailable')) tabs[idx].classList.add('active');
 }
 
 function renderPackages(pkgs) {
@@ -232,11 +339,10 @@ function renderPackages(pkgs) {
 function selectPackage(id) {
   selectedPackageId = id;
   document.getElementById('payBtn').disabled = false;
-  // Update visual selection
   var cards = document.querySelectorAll('.package-card');
   cards.forEach(function(c) { c.classList.remove('selected'); });
-  var selected = document.querySelector('.package-card[onclick*="' + id + '"]');
-  if (selected) selected.classList.add('selected');
+  var el = document.querySelector('.package-card[onclick*="' + id + '"]');
+  if (el) el.classList.add('selected');
 }
 
 // ── Payment Flow ──
@@ -249,27 +355,38 @@ function startPayment() {
   fetch('/api/payments/create-order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
-    body: JSON.stringify({ package_id: selectedPackageId }),
+    body: JSON.stringify({ package_id: selectedPackageId, method: selectedMethod }),
   })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.success) {
         currentOrderNo = data.data.order_no;
+        currentOrderData = data.data;
         document.getElementById('stepPackages').classList.add('hidden');
-        document.getElementById('stepPayment').classList.remove('hidden');
-        document.getElementById('payAmount').textContent = '¥' + data.data.amount + ' CNY';
-        document.getElementById('qrImage').src = data.data.qr_url;
-        document.getElementById('orderNoDisplay').textContent = data.data.order_no;
-        document.getElementById('orderPackage').textContent = data.data.package_label;
-        document.getElementById('orderAmount').textContent = '¥' + data.data.amount + ' (' + data.data.points.toLocaleString() + '点' + (data.data.bonus_points > 0 ? ' + 赠' + data.data.bonus_points.toLocaleString() + '点' : '') + ')';
-        document.getElementById('orderStatus').innerHTML = '<span class="badge badge-yellow">等待支付</span>';
-        startPolling();
+
+        if (data.data.method === 'xorpay') {
+          showOnlinePayment(data.data);
+        } else {
+          showManualPayment(data.data);
+        }
       } else {
         toast(data.error || '创建订单失败', 'error');
         document.getElementById('payBtn').disabled = false;
       }
     })
-    .catch(function(err) { toast('网络错误: ' + err.message, 'error'); document.getElementById('payBtn').disabled = false; });
+    .catch(function(err) { toast('网络错误', 'error'); document.getElementById('payBtn').disabled = false; });
+}
+
+// Online (XorPay) flow
+function showOnlinePayment(data) {
+  document.getElementById('stepOnline').classList.remove('hidden');
+  document.getElementById('payAmount').textContent = '¥' + data.amount + ' CNY';
+  document.getElementById('qrImage').src = data.qr_url;
+  document.getElementById('orderNoDisplay').textContent = data.order_no;
+  document.getElementById('orderPackage').textContent = data.package_label;
+  document.getElementById('orderAmount').textContent = '¥' + data.amount + ' (' + data.points.toLocaleString() + '点' + (data.bonus_points > 0 ? ' + 赠' + data.bonus_points.toLocaleString() + '点' : '') + ')';
+  document.getElementById('orderStatus').innerHTML = '<span class="badge badge-yellow">等待支付</span>';
+  startPolling();
 }
 
 function startPolling() {
@@ -279,43 +396,102 @@ function startPolling() {
 
 function pollOrderStatus() {
   if (!currentOrderNo) return;
-
   fetch('/api/payments/order/' + currentOrderNo, { headers: { 'Authorization': 'Bearer ' + API_KEY } })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (!data.success) return;
-
       if (data.data.status === 'paid') {
         clearInterval(pollTimer);
         pollTimer = null;
-        document.getElementById('stepPayment').classList.add('hidden');
-        document.getElementById('stepPaid').classList.remove('hidden');
-
-        // Update balance
-        var newBalance = data.data.points + (data.data.bonus_points || 0);
-        fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + API_KEY } })
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            if (d.success) {
-              document.getElementById('balanceDisplay').textContent = d.data.balance;
-              document.getElementById('paidDetail').textContent = '获得 ' + data.data.points.toLocaleString() + ' 点' + (data.data.bonus_points > 0 ? ' (+ ' + data.data.bonus_points.toLocaleString() + ' 赠送)' : '') + '，当前余额: ' + d.data.balance.toLocaleString() + ' 点';
-            }
-          });
-
+        showPaid(data.data);
         loadHistory();
       }
     });
 }
 
+// Manual (offline) flow
+function showManualPayment(data) {
+  document.getElementById('stepManual').classList.remove('hidden');
+  document.getElementById('payeeInfo').textContent = data.payee_info;
+  document.getElementById('manualOrderNo').textContent = data.order_no;
+  document.getElementById('manualOrderNo2').textContent = data.order_no;
+  document.getElementById('manualOrderPackage').textContent = data.package_label;
+  document.getElementById('manualOrderAmount').textContent = '¥' + data.amount;
+  document.getElementById('manualOrderPoints').textContent = data.points.toLocaleString() + ' 点' + (data.bonus_points > 0 ? ' (+ ' + data.bonus_points.toLocaleString() + ' 赠送)' : '');
+  document.getElementById('transactionId').value = '';
+  document.getElementById('proofNote').value = '';
+  document.getElementById('submitProofBtn').disabled = false;
+
+  // Start polling for approval
+  pollTimer = setInterval(function() {
+    fetch('/api/payments/order/' + currentOrderNo, { headers: { 'Authorization': 'Bearer ' + API_KEY } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success && d.data.status === 'paid') {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          document.getElementById('stepManual').classList.add('hidden');
+          document.getElementById('stepSubmitted').classList.add('hidden');
+          showPaid(d.data);
+          loadHistory();
+        }
+      });
+  }, 5000);
+}
+
+function submitProof() {
+  var txId = document.getElementById('transactionId').value.trim();
+  if (!txId) { toast('请输入交易单号', 'error'); return; }
+  var note = document.getElementById('proofNote').value.trim();
+
+  document.getElementById('submitProofBtn').disabled = true;
+
+  fetch('/api/payments/submit-proof', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+    body: JSON.stringify({ order_no: currentOrderNo, transaction_id: txId, proof_note: note }),
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        document.getElementById('stepManual').classList.add('hidden');
+        document.getElementById('stepSubmitted').classList.remove('hidden');
+        document.getElementById('submittedDetail').textContent = '订单号: ' + currentOrderNo + ' | 交易单号: ' + txId;
+        toast('凭证已提交，请等待审核');
+      } else {
+        toast(data.error, 'error');
+        document.getElementById('submitProofBtn').disabled = false;
+      }
+    });
+}
+
+function showPaid(data) {
+  document.getElementById('stepOnline').classList.add('hidden');
+  document.getElementById('stepManual').classList.add('hidden');
+  document.getElementById('stepSubmitted').classList.add('hidden');
+  document.getElementById('stepPaid').classList.remove('hidden');
+
+  fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + API_KEY } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        document.getElementById('balanceDisplay').textContent = d.data.balance;
+        document.getElementById('paidDetail').textContent = '获得 ' + data.points.toLocaleString() + ' 点' + (data.bonus_points > 0 ? ' (+ ' + data.bonus_points.toLocaleString() + ' 赠送)' : '') + '，当前余额: ' + d.data.balance.toLocaleString() + ' 点';
+      }
+    });
+}
+
 function cancelPayment() {
-  clearInterval(pollTimer);
-  pollTimer = null;
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   currentOrderNo = null;
+  currentOrderData = null;
   resetToPackages();
 }
 
 function resetToPackages() {
-  document.getElementById('stepPayment').classList.add('hidden');
+  document.getElementById('stepOnline').classList.add('hidden');
+  document.getElementById('stepManual').classList.add('hidden');
+  document.getElementById('stepSubmitted').classList.add('hidden');
   document.getElementById('stepPaid').classList.add('hidden');
   document.getElementById('stepPackages').classList.remove('hidden');
   document.getElementById('payBtn').disabled = !selectedPackageId;
@@ -342,16 +518,17 @@ function renderHistory(orders) {
     switch (o.status) {
       case 'paid': statusBadge = '<span class="badge badge-green">已支付</span>'; break;
       case 'pending': statusBadge = '<span class="badge badge-yellow">待支付</span>'; break;
+      case 'submitted': statusBadge = '<span class="badge badge-purple">审核中</span>'; break;
       case 'failed': statusBadge = '<span class="badge badge-red">失败</span>'; break;
-      case 'expired': statusBadge = '<span class="badge badge-red">已过期</span>'; break;
       default: statusBadge = '<span class="badge badge-blue">' + esc(o.status) + '</span>';
     }
+    var providerLabel = o.provider === 'manual' ? '🏦 线下' : o.provider === 'xorpay' ? '💳 在线' : esc(o.provider);
     return '<tr>' +
       '<td><span style="font-family:monospace;font-size:12px">' + esc(o.order_no) + '</span></td>' +
       '<td>' + esc(o.package_id) + '</td>' +
       '<td>¥' + o.amount + '</td>' +
       '<td>' + o.points.toLocaleString() + '</td>' +
-      '<td>' + (o.bonus_points > 0 ? '<span style="color:#f59e0b">+' + o.bonus_points.toLocaleString() + '</span>' : '-') + '</td>' +
+      '<td>' + providerLabel + '</td>' +
       '<td>' + statusBadge + '</td>' +
       '<td>' + esc(o.created_at) + '</td>' +
       '</tr>';
@@ -361,7 +538,7 @@ function renderHistory(orders) {
 // ── Tab Switching ──
 
 function switchTab(tab) {
-  var tabs = document.querySelectorAll('.tab');
+  var tabs = document.querySelectorAll('.tab-bar .tab');
   tabs.forEach(function(t) { t.classList.remove('active'); });
   if (tab === 'recharge') {
     tabs[0].classList.add('active');

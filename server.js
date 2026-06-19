@@ -58,6 +58,45 @@ const PROMPTS = Object.freeze({
 - 避免生成有害、违法或不道德的内容`,
     userTemplate: (messages) => null, // chat uses raw messages array
   },
+
+  codegen: {
+    system: `你是一位资深全栈软件工程师，精通多种编程语言和框架。
+代码生成规则：
+- 根据需求生成高质量、可运行的代码
+- 遵循最佳实践和设计模式
+- 包含必要的错误处理和边界检查
+- 代码注释清晰（中文注释）
+- 标注编程语言和依赖项
+- 如果需求不明确，先澄清再生成
+- 输出格式：先简要说明思路，再输出代码`,
+    userTemplate: (input, language) => `请用 ${language} 生成以下代码：\n\n${input}`,
+  },
+
+  codereview: {
+    system: `你是一位资深代码审查专家，擅长发现代码中的问题并提供改进建议。
+审查规则：
+- 检查代码正确性、性能、安全性和可维护性
+- 发现潜在bug和边界条件问题
+- 评估代码结构和命名
+- 指出安全漏洞（SQL注入、XSS等）
+- 提供具体的改进建议和示例
+- 按严重程度排序：🔴严重 🟡警告 🟢建议
+- 输出格式：先总结，再逐条列出问题`,
+    userTemplate: (input) => `请审查以下代码：\n\n${input}`,
+  },
+
+  dataanalysis: {
+    system: `你是一位资深数据分析师，擅长从数据中提取洞察。
+分析规则：
+- 先理解数据结构和含义
+- 进行统计分析（趋势、分布、异常值等）
+- 发现数据中的模式和关联
+- 提供可操作的建议
+- 使用表格和图表描述来呈现结果
+- 标注数据质量和潜在问题
+- 输出格式：数据概览 → 关键发现 → 详细分析 → 建议`,
+    userTemplate: (input) => `请分析以下数据：\n\n${input}`,
+  },
 });
 
 // ── Express App ─────────────────────────────────────────────
@@ -206,19 +245,31 @@ app.get('/api/health', (_req, res) => {
   res.json({ success: true, message: 'DeepSeek API Service is running' });
 });
 
-// User registration
+// User registration (invite-only)
 app.post('/api/register',
   mw.authLimiter,
   mw.validate(mw.schemas.registerSchema),
   (req, res) => {
-    const { username, password } = req.body; // already validated
+    const { username, password, invite_code } = req.body; // already validated
+
+    // Validate invite code
+    const inviteResult = db.validateInviteCode(invite_code);
+    if (!inviteResult) {
+      return res.status(400).json({ success: false, error: '无效的邀请码' });
+    }
+    if (inviteResult.error) {
+      return res.status(400).json({ success: false, error: inviteResult.error });
+    }
 
     const result = db.createUser(username, password);
     if (result.error) {
       return res.status(409).json({ success: false, error: result.error });
     }
 
-    logger.info({ username, requestId: req.requestId }, 'New user registered');
+    // Consume the invite code
+    db.consumeInviteCode(invite_code);
+
+    logger.info({ username, inviteCode: invite_code, requestId: req.requestId }, 'New user registered (invite-only)');
 
     res.json({
       success: true,
@@ -455,6 +506,150 @@ app.post('/api/admin/recharge',
       message: `已为 ${username} 充值 ${points} 点`,
       data: { username, balance_after: updatedUser.balance },
     });
+  }
+);
+
+// Admin: Invite Code Management
+app.get('/api/admin/invite-codes', mw.adminLimiter, mw.requireAdmin, (_req, res) => {
+  const codes = db.listInviteCodes();
+  res.json({ success: true, data: { invite_codes: codes } });
+});
+
+app.post('/api/admin/invite-codes',
+  mw.adminLimiter,
+  mw.requireAdmin,
+  mw.validate(mw.schemas.createInviteCodeSchema),
+  (req, res) => {
+    const { max_uses, note } = req.body;
+    const invite = db.createInviteCode(max_uses, note);
+
+    logger.info({ code: invite.code, maxUses: max_uses, requestId: req.requestId }, 'Invite code created');
+
+    res.json({
+      success: true,
+      message: '邀请码已生成',
+      data: { code: invite.code, max_uses: invite.max_uses, note: invite.note },
+    });
+  }
+);
+
+app.post('/api/admin/invite-codes/disable',
+  mw.adminLimiter,
+  mw.requireAdmin,
+  mw.validate(mw.schemas.disableInviteCodeSchema),
+  (req, res) => {
+    const { code } = req.body;
+    db.disableInviteCode(code);
+
+    logger.info({ code, requestId: req.requestId }, 'Invite code disabled');
+
+    res.json({ success: true, message: `邀请码 ${code} 已失效` });
+  }
+);
+
+// ── New AI Endpoints ──────────────────────────────────────────
+
+// Code Generation
+app.post('/api/codegen',
+  mw.aiLimiter,
+  requireAuth,
+  mw.validate(mw.schemas.codeGenSchema),
+  async (req, res) => {
+    const { input, language, max_tokens } = req.body;
+    const prompt = PROMPTS.codegen;
+
+    try {
+      const result = await callDeepSeek(prompt.system, prompt.userTemplate(input, language), max_tokens);
+
+      const promptTokens = result.usage?.prompt_tokens || 0;
+      const completionTokens = result.usage?.completion_tokens || 0;
+      const { points } = calculateCost(promptTokens, completionTokens);
+
+      const currentUser = db.getUserByApiKey(req.user.api_key);
+      if (!currentUser || currentUser.balance < points) {
+        return res.status(402).json({
+          success: false,
+          error: `余额不足，本次需要 ${points} 点，当前余额 ${currentUser ? currentUser.balance : 0} 点`,
+        });
+      }
+
+      db.deductBalance(req.user.id, points);
+      db.logUsage(req.user.id, 'codegen', promptTokens, completionTokens, points);
+
+      logger.info({ userId: req.user.id, endpoint: 'codegen', promptTokens, completionTokens, points, requestId: req.requestId }, 'CodeGen completed');
+
+      res.json({
+        success: true,
+        data: {
+          result: result.choices[0]?.message?.content || '',
+          usage: {
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+            points_cost: points,
+            balance_remaining: currentUser.balance - points,
+          },
+        },
+      });
+    } catch (err) {
+      logger.error({ err, endpoint: 'codegen', userId: req.user?.id, requestId: req.requestId }, 'CodeGen error');
+      res.status(500).json({ success: false, error: 'AI 服务暂时不可用，请稍后重试' });
+    }
+  }
+);
+
+// Code Review
+app.post('/api/codereview',
+  mw.aiLimiter,
+  requireAuth,
+  mw.validate(mw.schemas.aiEndpointSchema),
+  (req, res) => handleAiEndpoint(req, res, 'codereview')
+);
+
+// Data Analysis
+app.post('/api/dataanalysis',
+  mw.aiLimiter,
+  requireAuth,
+  mw.validate(mw.schemas.dataAnalysisSchema),
+  async (req, res) => {
+    const { input, max_tokens } = req.body;
+    const prompt = PROMPTS.dataanalysis;
+
+    try {
+      const result = await callDeepSeek(prompt.system, prompt.userTemplate(input), max_tokens);
+
+      const promptTokens = result.usage?.prompt_tokens || 0;
+      const completionTokens = result.usage?.completion_tokens || 0;
+      const { points } = calculateCost(promptTokens, completionTokens);
+
+      const currentUser = db.getUserByApiKey(req.user.api_key);
+      if (!currentUser || currentUser.balance < points) {
+        return res.status(402).json({
+          success: false,
+          error: `余额不足，本次需要 ${points} 点，当前余额 ${currentUser ? currentUser.balance : 0} 点`,
+        });
+      }
+
+      db.deductBalance(req.user.id, points);
+      db.logUsage(req.user.id, 'dataanalysis', promptTokens, completionTokens, points);
+
+      logger.info({ userId: req.user.id, endpoint: 'dataanalysis', promptTokens, completionTokens, points, requestId: req.requestId }, 'DataAnalysis completed');
+
+      res.json({
+        success: true,
+        data: {
+          result: result.choices[0]?.message?.content || '',
+          usage: {
+            prompt_tokens: promptTokens,
+            completion_tokens: completionTokens,
+            points_cost: points,
+            balance_remaining: currentUser.balance - points,
+          },
+        },
+      });
+    } catch (err) {
+      logger.error({ err, endpoint: 'dataanalysis', userId: req.user?.id, requestId: req.requestId }, 'DataAnalysis error');
+      res.status(500).json({ success: false, error: 'AI 服务暂时不可用，请稍后重试' });
+    }
   }
 );
 

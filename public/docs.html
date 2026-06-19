@@ -56,6 +56,10 @@
   <a href="#writer">AI 写作</a>
   <a href="#translator">中英翻译</a>
   <a href="#summary">文本摘要</a>
+  <a href="#chat">Chat 对话</a>
+  <a href="#codegen">代码生成</a>
+  <a href="#codereview">代码审查</a>
+  <a href="#dataanalysis">数据分析</a>
   <a href="#me">账户信息</a>
   <a href="#register">账号注册</a>
   <h3>充值</h3>
@@ -81,17 +85,20 @@
 <!-- ====== Overview ====== -->
 <section id="overview">
 <h2>简介</h2>
-<p>DeepSeek API Service 封装了 DeepSeek 大模型能力，提供开箱即用的 <strong>AI 写作</strong>、<strong>中英翻译</strong>、<strong>文本摘要</strong> 三大垂直场景 API。用户按点数付费，注册即送 100 点。</p>
+<p>DeepSeek API Service 封装了 DeepSeek 大模型能力，提供开箱即用的 <strong>AI 写作</strong>、<strong>中英翻译</strong>、<strong>文本摘要</strong>、<strong>Chat 对话</strong>、<strong>代码生成</strong>、<strong>代码审查</strong>、<strong>数据分析</strong> 七大垂直场景 API。用户按点数付费，注册即送 100 点。</p>
 <p><strong>Base URL:</strong> <code>http://localhost:3456</code></p>
 </section>
 
 <!-- ====== Quickstart ====== -->
 <section id="quickstart">
 <h2>快速开始</h2>
-<h3>1. 注册账号</h3>
+<h3>1. 获取邀请码</h3>
+<p>本服务采用邀请制注册，请联系管理员获取邀请码。</p>
+
+<h3>2. 注册账号</h3>
 <pre><code>curl -X POST http://localhost:3456/api/register \
   -H "Content-Type: application/json" \
-  -d '{"username": "myapp", "password": "mypassword"}'</code></pre>
+  -d '{"username": "myapp", "password": "mypassword", "invite_code": "XXXXXXXX"}'</code></pre>
 <p>返回 API Key 和初始 100 点数：</p>
 <pre><code>{
   "success": true,
@@ -102,14 +109,14 @@
   }
 }</code></pre>
 
-<h3>2. 调用 API</h3>
+<h3>3. 调用 API</h3>
 <p>在请求头中携带 API Key：</p>
 <pre><code>curl -X POST http://localhost:3456/api/writer \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer dsk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
   -d '{"input": "写一篇关于人工智能的科普文章，500字"}'</code></pre>
 
-<h3>3. 查看余额</h3>
+<h3>4. 查看余额</h3>
 <pre><code>curl http://localhost:3456/api/me \
   -H "Authorization: Bearer dsk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"</code></pre>
 
@@ -207,6 +214,74 @@
   -d '{"input": "（长文本内容...）"}'</code></pre>
 </section>
 
+<!-- ====== Chat ====== -->
+<section id="chat">
+<h2>Chat 对话</h2>
+<span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/chat</code>
+<p style="margin-top:12px">多轮对话接口，支持完整的 messages 数组，适用于需要上下文的连续对话场景。</p>
+
+<div class="endpoint-block">
+<h4>请求参数</h4>
+<table>
+<tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>messages</td><td>array</td><td>是</td><td>消息数组，每项含 role (user/assistant/system) 和 content，最多50条</td></tr>
+<tr><td>max_tokens</td><td>number</td><td>否</td><td>最大输出长度，默认 2048，最大 8192</td></tr>
+<tr><td>temperature</td><td>number</td><td>否</td><td>温度参数 0-2，默认 0.7</td></tr>
+</table>
+</div>
+
+<pre><code>curl -X POST http://localhost:3456/api/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"messages": [{"role": "user", "content": "你好，帮我看看这个问题"}]}'</code></pre>
+</section>
+
+<!-- ====== CodeGen ====== -->
+<section id="codegen">
+<h2>代码生成</h2>
+<span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/codegen</code>
+<p style="margin-top:12px">根据自然语言需求生成高质量代码，支持多种编程语言，包含注释和最佳实践。</p>
+
+<div class="endpoint-block">
+<h4>请求参数</h4>
+<table>
+<tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>input</td><td>string</td><td>是</td><td>编程需求描述，最多 50000 字符</td></tr>
+<tr><td>language</td><td>string</td><td>否</td><td>目标语言，默认 auto（自动判断）</td></tr>
+<tr><td>max_tokens</td><td>number</td><td>否</td><td>最大输出长度，默认 4096</td></tr>
+</table>
+</div>
+
+<pre><code>curl -X POST http://localhost:3456/api/codegen \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"input": "写一个 Python 函数，实现快速排序", "language": "python"}'</code></pre>
+</section>
+
+<!-- ====== CodeReview ====== -->
+<section id="codereview">
+<h2>代码审查</h2>
+<span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/codereview</code>
+<p style="margin-top:12px">AI 代码审查，检测 bug、安全漏洞、性能问题和可维护性问题，按严重程度排序。</p>
+
+<pre><code>curl -X POST http://localhost:3456/api/codereview \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"input": "function foo(x) { eval(x); }"}'</code></pre>
+</section>
+
+<!-- ====== DataAnalysis ====== -->
+<section id="dataanalysis">
+<h2>数据分析</h2>
+<span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/dataanalysis</code>
+<p style="margin-top:12px">对输入数据进行统计分析，发现趋势、模式和异常，提供可操作的建议。</p>
+
+<pre><code>curl -X POST http://localhost:3456/api/dataanalysis \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"input": "月份: 1月,2月,3月,4月\n销售额: 120,135,148,162"}'</code></pre>
+</section>
+
 <!-- ====== Me ====== -->
 <section id="me">
 <h2>账户信息</h2>
@@ -233,13 +308,23 @@
 <section id="register">
 <h2>账号注册</h2>
 <span class="badge badge-post">POST</span> <code class="url" style="margin-left:8px">/api/register</code>
-<p style="margin-top:12px">注册新账号，无需认证。用户名 3-32 字符，密码 6-128 字符。</p>
+<p style="margin-top:12px"><strong>邀请制注册。</strong>用户名 3-32 字符，密码 6-128 字符，需要有效邀请码。</p>
+
+<div class="endpoint-block">
+<h4>请求参数</h4>
+<table>
+<tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>username</td><td>string</td><td>是</td><td>用户名，3-32 字符</td></tr>
+<tr><td>password</td><td>string</td><td>是</td><td>密码，6-128 字符</td></tr>
+<tr><td>invite_code</td><td>string</td><td>是</td><td>邀请码，联系管理员获取</td></tr>
+</table>
+</div>
 
 <pre><code>curl -X POST http://localhost:3456/api/register \
   -H "Content-Type: application/json" \
-  -d '{"username": "newuser", "password": "securepass"}'</code></pre>
+  -d '{"username": "newuser", "password": "securepass", "invite_code": "XXXXXXXX"}'</code></pre>
 
-<div class="note">🎁 新注册用户自动赠送 <strong>100 点</strong>。</div>
+<div class="note">🎁 新注册用户自动赠送 <strong>100 点</strong>。邀请码由管理员在后台生成。</div>
 </section>
 
 <!-- ====== Packages ====== -->

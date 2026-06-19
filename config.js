@@ -64,6 +64,9 @@ const config = Object.freeze({
 
   // Payment order expiry (minutes)
   paymentOrderExpiryMinutes: parseInt(optional('PAYMENT_ORDER_EXPIRY_MINUTES', '30'), 10),
+
+  // Manual/offline payment info (shown to users on recharge page)
+  manualPaymentInfo: optional('MANUAL_PAYMENT_INFO', ''),
 });
 
 module.exports = config;

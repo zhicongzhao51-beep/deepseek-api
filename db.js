@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const logger = require('./logger');
 
-const DB_PATH = path.join(__dirname, 'data.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data.db');
 
 let db = null;
 let initPromise = null;
@@ -42,6 +42,13 @@ async function init() {
     db.run('PRAGMA journal_mode=WAL');
     db.run('PRAGMA synchronous=NORMAL');
     db.run('PRAGMA foreign_keys=ON');
+
+    // Migrations: add columns that may not exist in older DBs
+    const addColumn = (table, colDef) => {
+      try { db.run(`ALTER TABLE ${table} ADD COLUMN ${colDef}`); } catch (_) { /* already exists */ }
+    };
+    addColumn('payment_orders', 'transaction_id TEXT');
+    addColumn('payment_orders', 'proof_note TEXT');
 
     // Create tables
     db.run(`
@@ -83,6 +90,19 @@ async function init() {
         paid_at TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS invite_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE NOT NULL,
+        created_by TEXT NOT NULL DEFAULT 'admin',
+        max_uses INTEGER NOT NULL DEFAULT 1,
+        used_count INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        note TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `);
 
@@ -210,15 +230,14 @@ function getAllUsers() {
 
 // --- Payment operations ---
 
-function createPaymentOrder(userId, packageInfo, orderNo) {
+function createPaymentOrder(userId, packageInfo, orderNo, provider = 'xorpay') {
   const d = getDb();
   d.run(
     `INSERT INTO payment_orders (user_id, order_no, package_id, amount, points, bonus_points, provider)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [userId, orderNo, packageInfo.id, packageInfo.amount, packageInfo.points, packageInfo.bonus || 0, 'xorpay']
+    [userId, orderNo, packageInfo.id, packageInfo.amount, packageInfo.points, packageInfo.bonus || 0, provider]
   );
   saveToDisk();
-  // Retrieve the auto-generated id
   const result = d.exec('SELECT id FROM payment_orders WHERE order_no = ?', [orderNo]);
   const id = result.length > 0 && result[0].values.length > 0 ? result[0].values[0][0] : 0;
   return { id, orderNo };
@@ -227,7 +246,7 @@ function createPaymentOrder(userId, packageInfo, orderNo) {
 function getPaymentOrder(orderNo) {
   const d = getDb();
   const result = d.exec(
-    'SELECT id, user_id, order_no, package_id, amount, points, bonus_points, provider, provider_charge_id, status, paid_at, created_at FROM payment_orders WHERE order_no = ?',
+    'SELECT id, user_id, order_no, package_id, amount, points, bonus_points, provider, provider_charge_id, transaction_id, proof_note, status, paid_at, created_at FROM payment_orders WHERE order_no = ?',
     [orderNo]
   );
   if (result.length === 0 || result[0].values.length === 0) return null;
@@ -240,13 +259,11 @@ function getPaymentOrder(orderNo) {
 
 function completePaymentOrder(orderNo, providerChargeId) {
   const d = getDb();
-  // Check current status for idempotency
   const before = d.exec('SELECT status FROM payment_orders WHERE order_no = ?', [orderNo]);
   if (before.length === 0 || before[0].values.length === 0) return false;
   const currentStatus = before[0].values[0][0];
   if (currentStatus !== 'pending') return false;
 
-  // Update to paid
   d.run(
     `UPDATE payment_orders SET status = 'paid', provider_charge_id = ?, paid_at = datetime('now')
      WHERE order_no = ?`,
@@ -254,6 +271,68 @@ function completePaymentOrder(orderNo, providerChargeId) {
   );
   saveToDisk();
   return true;
+}
+
+function submitPaymentProof(orderNo, transactionId, proofNote) {
+  const d = getDb();
+  const before = d.exec('SELECT status FROM payment_orders WHERE order_no = ?', [orderNo]);
+  if (before.length === 0 || before[0].values.length === 0) return false;
+  const currentStatus = before[0].values[0][0];
+  if (currentStatus !== 'pending') return false;
+
+  d.run(
+    `UPDATE payment_orders SET transaction_id = ?, proof_note = ?, status = 'submitted'
+     WHERE order_no = ?`,
+    [transactionId, proofNote, orderNo]
+  );
+  saveToDisk();
+  return true;
+}
+
+function adminApproveOrder(orderNo) {
+  const d = getDb();
+  const before = d.exec('SELECT status, user_id, points, bonus_points FROM payment_orders WHERE order_no = ?', [orderNo]);
+  if (before.length === 0 || before[0].values.length === 0) return null;
+  const [status, userId, points, bonusPoints] = before[0].values[0];
+  if (status !== 'submitted') return null;
+
+  d.run(
+    `UPDATE payment_orders SET status = 'paid', paid_at = datetime('now') WHERE order_no = ?`,
+    [orderNo]
+  );
+  // Add points to user
+  d.run('UPDATE users SET balance = balance + ? WHERE id = ?', [points + (bonusPoints || 0), userId]);
+  saveToDisk();
+  return { userId, points: points + (bonusPoints || 0) };
+}
+
+function adminRejectOrder(orderNo) {
+  const d = getDb();
+  d.run(
+    `UPDATE payment_orders SET status = 'pending' WHERE order_no = ? AND status = 'submitted'`,
+    [orderNo]
+  );
+  saveToDisk();
+  return true;
+}
+
+function getPendingProofOrders(limit = 50) {
+  const d = getDb();
+  const result = d.exec(
+    `SELECT po.id, po.user_id, po.order_no, po.package_id, po.amount, po.points, po.bonus_points, po.provider, po.transaction_id, po.proof_note, po.status, po.created_at,
+            u.username
+     FROM payment_orders po JOIN users u ON po.user_id = u.id
+     WHERE po.status = 'submitted'
+     ORDER BY po.id ASC LIMIT ?`,
+    [limit]
+  );
+  if (result.length === 0) return [];
+  const cols = result[0].columns;
+  return result[0].values.map(row => {
+    const obj = {};
+    cols.forEach((col, i) => (obj[col] = row[i]));
+    return obj;
+  });
 }
 
 function failPaymentOrder(orderNo) {
@@ -268,7 +347,7 @@ function failPaymentOrder(orderNo) {
 function getUserPaymentOrders(userId, limit = 20, offset = 0) {
   const d = getDb();
   const result = d.exec(
-    'SELECT order_no, package_id, amount, points, bonus_points, provider, status, paid_at, created_at FROM payment_orders WHERE user_id = ? ORDER BY id DESC LIMIT ? OFFSET ?',
+    'SELECT order_no, package_id, amount, points, bonus_points, provider, transaction_id, proof_note, status, paid_at, created_at FROM payment_orders WHERE user_id = ? ORDER BY id DESC LIMIT ? OFFSET ?',
     [userId, limit, offset]
   );
   if (result.length === 0) return [];
@@ -278,6 +357,72 @@ function getUserPaymentOrders(userId, limit = 20, offset = 0) {
     cols.forEach((col, i) => (obj[col] = row[i]));
     return obj;
   });
+}
+
+// --- Invite Code operations ---
+
+function generateInviteCode(length = 8) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // avoid confusable chars
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function createInviteCode(maxUses = 1, note = '', createdBy = 'admin') {
+  const d = getDb();
+  const code = generateInviteCode();
+  d.run(
+    'INSERT INTO invite_codes (code, created_by, max_uses, note) VALUES (?, ?, ?, ?)',
+    [code, createdBy, maxUses, note]
+  );
+  saveToDisk();
+  return { code, max_uses: maxUses, note };
+}
+
+function validateInviteCode(code) {
+  const d = getDb();
+  const result = d.exec(
+    'SELECT id, code, max_uses, used_count, is_active FROM invite_codes WHERE code = ?',
+    [code]
+  );
+  if (result.length === 0 || result[0].values.length === 0) return null;
+
+  const row = result[0].values[0];
+  const invite = { id: row[0], code: row[1], max_uses: row[2], used_count: row[3], is_active: row[4] };
+
+  if (!invite.is_active) return { error: '邀请码已失效' };
+  if (invite.used_count >= invite.max_uses) return { error: '邀请码已被用完' };
+
+  return { valid: true, invite };
+}
+
+function consumeInviteCode(code) {
+  const d = getDb();
+  d.run('UPDATE invite_codes SET used_count = used_count + 1 WHERE code = ?', [code]);
+  saveToDisk();
+}
+
+function listInviteCodes() {
+  const d = getDb();
+  const result = d.exec(
+    'SELECT id, code, created_by, max_uses, used_count, is_active, note, created_at FROM invite_codes ORDER BY id DESC'
+  );
+  if (result.length === 0) return [];
+  const cols = result[0].columns;
+  return result[0].values.map(row => {
+    const obj = {};
+    cols.forEach((col, i) => (obj[col] = row[i]));
+    return obj;
+  });
+}
+
+function disableInviteCode(code) {
+  const d = getDb();
+  d.run('UPDATE invite_codes SET is_active = 0 WHERE code = ?', [code]);
+  saveToDisk();
+  return true;
 }
 
 module.exports = {
@@ -294,6 +439,16 @@ module.exports = {
   createPaymentOrder,
   getPaymentOrder,
   completePaymentOrder,
+  submitPaymentProof,
+  adminApproveOrder,
+  adminRejectOrder,
+  getPendingProofOrders,
   failPaymentOrder,
   getUserPaymentOrders,
+  createInviteCode,
+  validateInviteCode,
+  consumeInviteCode,
+  listInviteCodes,
+  disableInviteCode,
+  generateInviteCode,
 };
