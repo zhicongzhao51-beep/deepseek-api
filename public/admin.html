@@ -99,7 +99,11 @@
 
   <div id="tabUsage" class="hidden">
     <div class="card">
-      <h2>📊 用量汇总</h2>
+      <h2>📊 端点使用分布</h2>
+      <div id="endpointBreakdown"></div>
+    </div>
+    <div class="card">
+      <h2>📊 用户用量汇总</h2>
       <table id="usageTable">
         <thead><tr><th>用户名</th><th>端点</th><th>调用次数</th><th>Prompt Tokens</th><th>Completion Tokens</th><th>消耗点数</th></tr></thead>
         <tbody></tbody>
@@ -176,29 +180,19 @@ function login() {
     .catch(() => toast('连接失败，请检查服务是否启动', 'error'));
 }
 
-function refreshData() {
-  fetch('/api/admin/stats', { headers: { 'x-admin-key': ADMIN_KEY } })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        renderStats(data.data);
-        renderUsers(data.data.users);
-        renderUsage(data.data.usage_stats);
-      }
-    });
-}
-
 function renderStats(data) {
-  const totalUsers = data.users.length;
-  const totalCalls = data.usage_stats.reduce((s, u) => s + u.calls, 0);
-  const totalPoints = data.usage_stats.reduce((s, u) => s + u.total_cost, 0);
-  const userBalances = data.users.reduce((s, u) => s + u.balance, 0);
+  const s = data.summary || {};
+  const ps = data.payment_stats || {};
 
   document.getElementById('statsGrid').innerHTML = `
-    <div class="stat-item"><div class="label">总用户数</div><div class="value">${totalUsers}</div></div>
-    <div class="stat-item"><div class="label">总调用次数</div><div class="value">${totalCalls}</div></div>
-    <div class="stat-item"><div class="label">总消耗点数</div><div class="value">${totalPoints}</div></div>
-    <div class="stat-item"><div class="label">用户总余额</div><div class="value">${userBalances}</div></div>
+    <div class="stat-item"><div class="label">总用户数</div><div class="value">${s.total_users||0}</div></div>
+    <div class="stat-item"><div class="label">近7日新增</div><div class="value" style="color:#22c55e">+${s.recent_users_7d||0}</div></div>
+    <div class="stat-item"><div class="label">总调用次数</div><div class="value">${s.total_calls||0}</div></div>
+    <div class="stat-item"><div class="label">总消耗点数</div><div class="value">${(s.total_points_consumed||0).toLocaleString()}</div></div>
+    <div class="stat-item"><div class="label">已确认收入</div><div class="value" style="color:#6ee7b7">¥${(ps.total_revenue||0).toFixed(0)}</div></div>
+    <div class="stat-item"><div class="label">待审核金额</div><div class="value" style="color:#fcd34d">¥${(ps.total_pending||0).toFixed(0)}</div></div>
+    <div class="stat-item"><div class="label">已售点数</div><div class="value">${(ps.total_points_sold||0).toLocaleString()}</div></div>
+    <div class="stat-item"><div class="label">用户总余额</div><div class="value">${(s.total_user_balance||0).toLocaleString()}</div></div>
   `;
 }
 
@@ -225,11 +219,46 @@ function renderUsage(usage) {
       <td>${esc(u.username || '-')}</td>
       <td><span class="badge badge-green">${esc(u.endpoint)}</span></td>
       <td>${u.calls}</td>
-      <td>${u.total_prompt.toLocaleString()}</td>
-      <td>${u.total_completion.toLocaleString()}</td>
+      <td>${(u.total_prompt||0).toLocaleString()}</td>
+      <td>${(u.total_completion||0).toLocaleString()}</td>
       <td><strong>${u.total_cost}</strong></td>
     </tr>
   `).join('');
+}
+
+function refreshData() {
+  fetch('/api/admin/stats', { headers: { 'x-admin-key': ADMIN_KEY } })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        renderStats(data.data);
+        renderUsers(data.data.users);
+        renderUsage(data.data.usage_stats);
+        renderEndpointBreakdown(data.data.endpoint_breakdown);
+      }
+    });
+}
+
+function renderEndpointBreakdown(breakdown) {
+  var container = document.getElementById('endpointBreakdown');
+  if (!container) return;
+  if (!breakdown || !breakdown.length) {
+    container.innerHTML = '<div style="color:#64748b;text-align:center;padding:20px">暂无端点使用数据</div>';
+    return;
+  }
+  var maxCalls = Math.max.apply(null, breakdown.map(function(b) { return b.calls; }));
+  container.innerHTML = breakdown.map(function(b) {
+    var pct = maxCalls > 0 ? Math.round(b.calls / maxCalls * 100) : 0;
+    return '<div style="margin-bottom:12px">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+        '<span style="font-size:13px">' + esc(b.endpoint) + '</span>' +
+        '<span style="font-size:13px;color:#94a3b8">' + b.calls + ' 次 | ' + b.total_points.toLocaleString() + ' 点</span>' +
+      '</div>' +
+      '<div style="background:#1e293b;border-radius:4px;height:6px;overflow:hidden">' +
+        '<div style="background:#6366f1;height:100%;width:' + pct + '%"></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function recharge() {

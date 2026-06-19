@@ -471,10 +471,35 @@ app.get('/api/me', mw.authLimiter, requireAuth, (req, res) => {
 // Admin stats (header-based auth only, rate limited before auth to prevent brute force)
 app.get('/api/admin/stats', mw.adminLimiter, mw.requireAdmin, (_req, res) => {
   const users = db.getAllUsers();
-  const stats = db.getUsageStats();
+  const usageStats = db.getUsageStats();
+  const paymentStats = db.getPaymentStats ? db.getPaymentStats() : null;
+  const endpointBreakdown = db.getEndpointBreakdown ? db.getEndpointBreakdown() : null;
+
+  // Aggregate stats
+  const totalBalance = users.reduce((s, u) => s + u.balance, 0);
+  const totalCalls = usageStats.reduce((s, u) => s + u.calls, 0);
+  const totalPointsConsumed = usageStats.reduce((s, u) => s + u.total_cost, 0);
+
+  // Recent registrations (last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recentUsers = users.filter(u => new Date(u.created_at) >= sevenDaysAgo);
+
   res.json({
     success: true,
-    data: { users, usage_stats: stats },
+    data: {
+      summary: {
+        total_users: users.length,
+        recent_users_7d: recentUsers.length,
+        total_calls: totalCalls,
+        total_points_consumed: totalPointsConsumed,
+        total_user_balance: totalBalance,
+      },
+      payment_stats: paymentStats,
+      endpoint_breakdown: endpointBreakdown,
+      users,
+      usage_stats: usageStats,
+    },
   });
 });
 

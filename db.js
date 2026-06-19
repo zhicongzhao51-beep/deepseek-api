@@ -427,6 +427,51 @@ function disableInviteCode(code) {
   return true;
 }
 
+// Payment statistics for admin dashboard
+function getPaymentStats() {
+  const d = getDb();
+  const result = d.exec(
+    `SELECT status, COUNT(*) as count, COALESCE(SUM(amount), 0) as total_amount,
+            COALESCE(SUM(points), 0) as total_points, COALESCE(SUM(bonus_points), 0) as total_bonus
+     FROM payment_orders GROUP BY status`
+  );
+  if (result.length === 0) return { orders: {}, total_revenue: 0, total_pending: 0, total_points_sold: 0 };
+
+  const stats = { orders: {}, total_revenue: 0, total_pending: 0, total_points_sold: 0 };
+  const cols = result[0].columns;
+  result[0].values.forEach(row => {
+    const obj = {};
+    cols.forEach((col, i) => (obj[col] = row[i]));
+    stats.orders[obj.status] = obj;
+    if (obj.status === 'paid') {
+      stats.total_revenue += obj.total_amount || 0;
+      stats.total_points_sold += obj.total_points || 0;
+    }
+    if (obj.status === 'pending' || obj.status === 'submitted') {
+      stats.total_pending += obj.total_amount || 0;
+    }
+  });
+  return stats;
+}
+
+// Endpoint usage breakdown for admin dashboard
+function getEndpointBreakdown() {
+  const d = getDb();
+  const result = d.exec(
+    `SELECT endpoint, COUNT(*) as calls, COALESCE(SUM(points_cost), 0) as total_points,
+            COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
+            COALESCE(SUM(completion_tokens), 0) as total_completion_tokens
+     FROM usage_logs GROUP BY endpoint ORDER BY calls DESC`
+  );
+  if (result.length === 0) return [];
+  const cols = result[0].columns;
+  return result[0].values.map(row => {
+    const obj = {};
+    cols.forEach((col, i) => (obj[col] = row[i]));
+    return obj;
+  });
+}
+
 module.exports = {
   init,
   createUser,
@@ -453,4 +498,6 @@ module.exports = {
   listInviteCodes,
   disableInviteCode,
   generateInviteCode,
+  getPaymentStats,
+  getEndpointBreakdown,
 };
