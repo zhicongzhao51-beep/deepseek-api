@@ -157,6 +157,21 @@ router.post('/submit-proof',
 
     logger.info({ userId: req.user.id, orderNo: order_no, transactionId: transaction_id, requestId: req.requestId }, 'Payment proof submitted');
 
+    // Send WeChat notification to admin
+    const notify = require('../services/notify');
+    const config = require('../config');
+    const pkg = config.pointsPackages.find(p => p.id === order.package_id) || {};
+    notify.notifyNewPaymentProof({
+      orderNo: order_no,
+      username: req.user.username,
+      amount: order.amount,
+      packageLabel: pkg.label || order.package_id,
+      points: order.points,
+      bonusPoints: order.bonus_points || 0,
+      transactionId: transaction_id,
+      proofNote: proof_note || '',
+    }).catch(() => {});
+
     res.json({
       success: true,
       message: '凭证已提交，请等待管理员审核',

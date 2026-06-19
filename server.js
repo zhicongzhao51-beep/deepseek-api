@@ -9,6 +9,7 @@ const config = require('./config');
 const logger = require('./logger');
 const db = require('./db');
 const mw = require('./middleware');
+const notify = require('./services/notify');
 
 // ── Prompt Templates ────────────────────────────────────────
 
@@ -270,6 +271,9 @@ app.post('/api/register',
     db.consumeInviteCode(invite_code);
 
     logger.info({ username, inviteCode: invite_code, requestId: req.requestId }, 'New user registered (invite-only)');
+
+    // Send WeChat notification to admin
+    notify.notifyNewUser({ username, inviteCode: invite_code }).catch(() => {});
 
     res.json({
       success: true,
