@@ -19,11 +19,7 @@ ENV NODE_ENV=production
 ENV PORT=3456
 ENV DB_PATH=/app/data/data.db
 
-# Security: run as non-root
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
-    chown -R nodejs:nodejs /app
-USER nodejs
+# Note: Running as root inside Railway container (Railway provides container-level isolation)
 
 EXPOSE 3456
 
