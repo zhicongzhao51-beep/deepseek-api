@@ -82,6 +82,7 @@ async function init() {
         provider_charge_id TEXT,
         transaction_id TEXT,
         proof_note TEXT DEFAULT '',
+        approve_token TEXT,
         status TEXT NOT NULL DEFAULT 'pending',
         paid_at TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -95,7 +96,22 @@ async function init() {
     };
     addColumn('payment_orders', 'transaction_id TEXT');
     addColumn('payment_orders', 'proof_note TEXT DEFAULT \'\'');
-    addColumn('payment_orders', 'approve_token TEXT');
+
+    // Robust approve_token migration: check via SELECT before ALTER
+    try {
+      db.exec('SELECT approve_token FROM payment_orders LIMIT 1');
+    } catch (_) {
+      db.run('ALTER TABLE payment_orders ADD COLUMN approve_token TEXT');
+      logger.info('Migration: added approve_token column to payment_orders');
+    }
+
+    // Verify the column exists
+    try {
+      db.exec('SELECT approve_token FROM payment_orders LIMIT 1');
+      logger.info('approve_token column verified');
+    } catch (_) {
+      logger.error('approve_token column STILL MISSING after migration!');
+    }
 
     db.run(`
       CREATE TABLE IF NOT EXISTS invite_codes (
@@ -367,7 +383,7 @@ function adminRejectOrder(orderNo) {
 function getPendingProofOrders(limit = 50) {
   const d = getDb();
   const result = d.exec(
-    `SELECT po.id, po.user_id, po.order_no, po.package_id, po.amount, po.points, po.bonus_points, po.provider, po.transaction_id, po.proof_note, po.status, po.created_at,
+    `SELECT po.id, po.user_id, po.order_no, po.package_id, po.amount, po.points, po.bonus_points, po.provider, po.transaction_id, po.proof_note, po.approve_token, po.status, po.created_at,
             u.username
      FROM payment_orders po JOIN users u ON po.user_id = u.id
      WHERE po.status = 'submitted'
