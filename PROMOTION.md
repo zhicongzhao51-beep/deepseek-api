@@ -10,16 +10,16 @@
 
 | 平台 | 邀请码 | 最大用量 |
 |------|--------|----------|
-| 小红书 | `5DKK9R2S` | 100 |
-| 知乎 | `5K4A4PQV` | 100 |
-| 抖音 | `MV3ARQBK` | 100 |
-| 闲鱼 | `G328M4GX` | 100 |
-| 微信朋友圈 | `QHSCDRUL` | 100 |
-| QQ群 | `VTASWWU5` | 100 |
-| B站 | `EFADKSW8` | 100 |
-| Twitter | `7RFT8PVC` | 100 |
-| CSDN | `HXRWUMZ9` | 100 |
-| 公众号 | `TJ72B9E5` | 100 |
+| 小红书 | `BFJQJZFN` | 100 |
+| 知乎 | `CC2H6WBX` | 100 |
+| 抖音 | `8M2MQ3VC` | 100 |
+| 闲鱼 | `EKTQL9FV` | 100 |
+| 微信朋友圈 | `Z7TEGA5X` | 100 |
+| QQ群 | `4MEXZLM7` | 100 |
+| B站 | `AN5HVUH3` | 100 |
+| Twitter | `A2YV98BV` | 100 |
+| CSDN | `LD3YHYH2` | 100 |
+| 公众号 | `E887BCVZ` | 100 |
 
 ---
 
