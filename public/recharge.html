@@ -176,12 +176,30 @@
     <!-- Offline: Manual Transfer -->
     <div id="stepManual" class="hidden">
       <div class="card">
-        <h2>🏦 线下转账</h2>
-        <div class="payee-box">
-          <h4>📋 收款信息</h4>
-          <pre id="payeeInfo"></pre>
-          <p style="color:#f59e0b;font-size:13px;margin-top:8px">转账时请备注订单号: <strong id="manualOrderNo" style="font-family:monospace"></strong></p>
+        <h2>🏦 扫码转账</h2>
+        <p style="color:#94a3b8;font-size:14px;margin-bottom:20px">使用微信或支付宝扫描下方二维码转账，转账时请<strong style="color:#f59e0b">备注订单号</strong></p>
+
+        <!-- QR Codes -->
+        <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-bottom:24px">
+          <div style="text-align:center">
+            <div style="background:white;border-radius:12px;padding:8px;display:inline-block;margin-bottom:8px">
+              <img src="/wechat-qr.png" alt="微信收款码" style="width:180px;height:180px;display:block">
+            </div>
+            <div style="color:#6ee7b7;font-weight:600">💚 微信支付</div>
+          </div>
+          <div style="text-align:center">
+            <div style="background:white;border-radius:12px;padding:8px;display:inline-block;margin-bottom:8px">
+              <img src="/alipay-qr.png" alt="支付宝收款码" style="width:180px;height:180px;display:block">
+            </div>
+            <div style="color:#93c5fd;font-weight:600">💙 支付宝</div>
+          </div>
         </div>
+
+        <div class="payee-box" style="text-align:center">
+          <p style="color:#f59e0b;font-size:14px;margin-bottom:4px">⚠️ 转账时请务必备注订单号</p>
+          <p style="font-size:24px;font-weight:800;font-family:monospace;color:#e2e8f0" id="manualOrderNo"></p>
+        </div>
+
         <div class="order-info" style="display:block;width:100%">
           <div>订单号: <span id="manualOrderNo2"></span></div>
           <div>套餐: <span id="manualOrderPackage"></span></div>
@@ -190,7 +208,7 @@
         </div>
 
         <div style="margin-top:20px">
-          <h4 style="margin-bottom:12px">📝 提交转账凭证</h4>
+          <h4 style="margin-bottom:12px">📝 转账完成后，提交凭证</h4>
           <div class="proof-form">
             <div class="form-group">
               <label>交易单号 / 转账备注 *</label>
@@ -200,7 +218,7 @@
               <label>补充说明（选填）</label>
               <textarea id="proofNote" placeholder="如：已转账，请查收"></textarea>
             </div>
-            <button id="submitProofBtn" onclick="submitProof()">📤 提交凭证</button>
+            <button id="submitProofBtn" onclick="submitProof()">📤 提交凭证，等待确认</button>
             <button class="secondary" style="margin-left:8px" onclick="cancelPayment()">取消</button>
           </div>
         </div>
@@ -495,7 +513,6 @@ function pollOrderStatus() {
 // Manual (offline) flow
 function showManualPayment(data) {
   document.getElementById('stepManual').classList.remove('hidden');
-  document.getElementById('payeeInfo').textContent = data.payee_info;
   document.getElementById('manualOrderNo').textContent = data.order_no;
   document.getElementById('manualOrderNo2').textContent = data.order_no;
   document.getElementById('manualOrderPackage').textContent = data.package_label;
