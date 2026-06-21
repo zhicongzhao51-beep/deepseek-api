@@ -148,27 +148,32 @@ function requireAdmin(req, res, next) {
 
 // ── Rate Limiters ───────────────────────────────────────────
 
-const aiLimiter = rateLimit({
-  windowMs: config.rateLimitWindowMs,
-  max: config.rateLimitMaxAi,
+// Rate limiters — validate.xForwardedForHeader disabled because
+// trust proxy is set on the app after limiter module is loaded
+const rateLimitDefaults = {
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+};
+
+const aiLimiter = rateLimit({
+  ...rateLimitDefaults,
+  windowMs: config.rateLimitWindowMs,
+  max: config.rateLimitMaxAi,
   message: { success: false, error: '请求过于频繁，请稍后再试' },
 });
 
 const authLimiter = rateLimit({
+  ...rateLimitDefaults,
   windowMs: config.rateLimitWindowMs,
   max: config.rateLimitMaxAuth,
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { success: false, error: '请求过于频繁，请稍后再试' },
 });
 
 const adminLimiter = rateLimit({
+  ...rateLimitDefaults,
   windowMs: config.rateLimitWindowMs,
   max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { success: false, error: '请求过于频繁，请稍后再试' },
 });
 
