@@ -271,6 +271,14 @@ app.post('/approve/:token', (req, res) => {
  * @param {number} [maxTokens]
  * @returns {Promise<object>}
  */
+/**
+ * Extract content from a DeepSeek API choice, falling back to reasoning_content
+ * for reasoning models (deepseek-v4-flash, deepseek-r1, etc.).
+ */
+function extractContent(choice) {
+  return choice?.message?.content || choice?.message?.reasoning_content || '';
+}
+
 async function callDeepSeek(systemPrompt, userMessage, maxTokens = 2048) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.deepseekTimeoutMs);
@@ -487,7 +495,7 @@ async function handleAiEndpoint(req, res, promptKey) {
     res.json({
       success: true,
       data: {
-        result: result.choices[0]?.message?.content || '',
+        result: extractContent(result.choices[0]),
         usage: {
           prompt_tokens: promptTokens,
           completion_tokens: completionTokens,
@@ -569,7 +577,7 @@ app.post('/api/chat',
       res.json({
         success: true,
         data: {
-          result: result.choices[0]?.message?.content || '',
+          result: extractContent(result.choices[0]),
           usage: {
             prompt_tokens: promptTokens,
             completion_tokens: completionTokens,
@@ -738,7 +746,7 @@ app.post('/api/codegen',
       res.json({
         success: true,
         data: {
-          result: result.choices[0]?.message?.content || '',
+          result: extractContent(result.choices[0]),
           usage: {
             prompt_tokens: promptTokens,
             completion_tokens: completionTokens,
@@ -794,7 +802,7 @@ app.post('/api/dataanalysis',
       res.json({
         success: true,
         data: {
-          result: result.choices[0]?.message?.content || '',
+          result: extractContent(result.choices[0]),
           usage: {
             prompt_tokens: promptTokens,
             completion_tokens: completionTokens,
