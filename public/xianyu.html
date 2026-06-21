@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>闲鱼发布助手 — DeepSeek API</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f5f5; padding: 16px; }
+  .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .label { font-size: 13px; color: #ff5000; font-weight: 700; margin-bottom: 6px; }
+  .content { font-size: 14px; color: #333; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+  .copy-btn { display: inline-block; margin-top: 8px; padding: 8px 20px; background: #ff5000; color: white; border: none; border-radius: 20px; font-size: 14px; cursor: pointer; }
+  .copy-btn:active { background: #d44500; }
+  .step { font-size: 12px; color: #999; margin-top: 4px; }
+  h2 { font-size: 20px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<h2>🐟 闲鱼发布助手</h2>
+<p style="color:#999;margin-bottom:16px;font-size:13px">逐项点「复制」→ 切到闲鱼粘贴</p>
+
+<div class="card">
+  <div class="label">📌 标题</div>
+  <div class="content" id="title">DeepSeek API 充值点数 AI写作翻译代码生成 注册送100点 自助下单</div>
+  <button class="copy-btn" onclick="copy('title')">复制标题</button>
+</div>
+
+<div class="card">
+  <div class="label">💰 价格</div>
+  <div class="content">¥10（选最低价，描述里列全部套餐）</div>
+  <div class="step">发布后可在套餐里选 ¥10~¥500</div>
+</div>
+
+<div class="card">
+  <div class="label">📝 描述（点复制后去闲鱼粘贴）</div>
+  <div class="content" id="desc">🤖 DeepSeek 官方大模型 API 点数充值
+
+✅ AI写作 · 翻译 · 摘要 · 代码生成 · 代码审查 · 数据分析
+✅ 注册即送 100 点免费试用
+✅ 10元起充，按量计费
+✅ RESTful API，一行代码调用
+✅ 24小时在线，自动扣点
+
+【套餐价格】
+基础包 ¥10 = 1,000点
+入门包 ¥50 = 5,500点 (送500)
+人气包 ¥100 = 12,000点 (送2,000)
+专业包 ¥200 = 25,000点 (送5,000)
+企业包 ¥500 = 65,000点 (送15,000)
+
+【使用方法】
+1. 打开链接注册 → 输入邀请码 → 获得 API Key + 100免费点
+2. 选套餐 → 转账 → 提交凭证
+3. 确认到账 → 点数自动到账
+
+🔗 注册地址:
+https://deepseek-api-service-production.up.railway.app/recharge
+🔑 邀请码: HPB84E9C
+
+【关于服务】
+个人开发者搭建，API 稳定运行
+支持 curl / Python / JS 等所有语言调用
+详细 API 文档在线可查
+使用问题闲鱼私聊，看到就回</div>
+  <button class="copy-btn" onclick="copy('desc')">复制描述</button>
+</div>
+
+<div class="card">
+  <div class="label">🖼️ 图片（建议截4张）</div>
+  <div class="content">1️⃣ 首页 — 展示7大AI能力
+2️⃣ API文档页 /docs — 展示端点
+3️⃣ 充值页 /recharge — 展示套餐
+4️⃣ 三步开始区 — 展示易用性</div>
+</div>
+
+<script>
+function copy(id) {
+  const text = document.getElementById(id).innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ 已复制！切到闲鱼 App 粘贴');
+  }).catch(() => {
+    prompt('手动复制：', text);
+  });
+}
+</script>
+</body>
+</html>
