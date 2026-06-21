@@ -145,7 +145,7 @@ AI写作·翻译·代码生成 API 点数充值服务
 
 适合写文案、做开发、搞研究的朋友们。
 
-有需要的用这个邀请码注册：**QHSCDRUL**
+有需要的用这个邀请码注册：**Q2R5PEJ8**
 
 地址：https://deepseek-api-service-production.up.railway.app/recharge
 
@@ -211,7 +211,7 @@ AI写作·翻译·代码生成 API 点数充值服务
 • RESTful API, Bearer auth
 • Pay-as-you-go
 
-Invite code: **7RFT8PVC**
+Invite code: **MNWJ2C59**
 👉 https://deepseek-api-service-production.up.railway.app/recharge
 
 #DeepSeek #AI #API #SaaS #BuildInPublic
