@@ -38,7 +38,7 @@
 
 【使用方法】
 1. 打开 https://deepseek-api-service-production.up.railway.app/recharge
-2. 输入邀请码：GLF76YSY（闲鱼专属）
+2. 输入邀请码：HPB84E9C（闲鱼专属）
 3. 注册 → 获得 API Key + 100免费点
 4. 选套餐 → 扫码转账 → 点数自动到账
 
@@ -79,7 +79,7 @@
 写作、翻译、代码生成、数据分析...7个AI能力，一行代码接入。
 有需要的朋友用这个链接注册 👇
 https://deepseek-api-service-production.up.railway.app/recharge
-邀请码：JXLNTVEY
+邀请码：Q2R5PEJ8
 ```
 
 ---
@@ -107,14 +107,16 @@ https://deepseek-api-service-production.up.railway.app/recharge
 
 | 渠道 | 邀请码 | 状态 |
 |------|--------|------|
-| 闲鱼 | GLF76YSY | 待推广 |
-| 小红书 | LGJYL7H6 | 待推广 |
-| 知乎 | 28G6ENS8 | 待推广 |
-| 抖音 | 3TF86UCK | 待推广 |
-| 微信 | JXLNTVEY | 待推广 |
-| QQ群 | H9CMZ8BL | 待推广 |
-| B站 | 8LQ7J5VG | 待推广 |
-| CSDN | LNLEPYPC | 待推广 |
+| 小红书 | PVJS42B2 | 待推广 |
+| 知乎 | DU8682PB | 待推广 |
+| 抖音 | L3BJC94W | 待推广 |
+| 闲鱼 | HPB84E9C | 待推广 |
+| 微信朋友圈 | Q2R5PEJ8 | 待推广 |
+| QQ群 | HFKQ45CA | 待推广 |
+| B站 | KWVR26XH | 待推广 |
+| Twitter | MNWJ2C59 | 待推广 |
+| CSDN | 8838NTGM | 待推广 |
+| 公众号 | 4L26BQMW | 待推广 |
 
 ---
 

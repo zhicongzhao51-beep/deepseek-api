@@ -10,22 +10,22 @@
 
 | 平台 | 邀请码 | 最大用量 |
 |------|--------|----------|
-| 小红书 | `BFJQJZFN` | 100 |
-| 知乎 | `CC2H6WBX` | 100 |
-| 抖音 | `8M2MQ3VC` | 100 |
-| 闲鱼 | `EKTQL9FV` | 100 |
-| 微信朋友圈 | `Z7TEGA5X` | 100 |
-| QQ群 | `4MEXZLM7` | 100 |
-| B站 | `AN5HVUH3` | 100 |
-| Twitter | `A2YV98BV` | 100 |
-| CSDN | `LD3YHYH2` | 100 |
-| 公众号 | `E887BCVZ` | 100 |
+| 小红书 | `PVJS42B2` | 100 |
+| 知乎 | `DU8682PB` | 100 |
+| 抖音 | `L3BJC94W` | 100 |
+| 闲鱼 | `HPB84E9C` | 100 |
+| 微信朋友圈 | `Q2R5PEJ8` | 100 |
+| QQ群 | `HFKQ45CA` | 100 |
+| B站 | `KWVR26XH` | 100 |
+| Twitter | `MNWJ2C59` | 100 |
+| CSDN | `8838NTGM` | 100 |
+| 公众号 | `4L26BQMW` | 100 |
 
 ---
 
 ## 📱 各平台推广文案
 
-### 🟥 小红书 (邀请码: 5DKK9R2S)
+### 🟥 小红书 (邀请码: PVJS42B2)
 
 **标题**: 🤖 独立开发者福利｜DeepSeek API 白菜价，注册送100点！
 
@@ -42,7 +42,7 @@
 💰 充值套餐：基础包¥10(1000点) | 人气包¥100(12000点) | 企业包¥500(65000点)
 
 👉 注册地址：https://deepseek-api-service-production.up.railway.app/recharge
-🔑 邀请码：**5DKK9R2S**
+🔑 邀请码：**PVJS42B2**
 
 适合：独立开发者、AI创业者、内容创作者、技术团队
 
@@ -50,7 +50,7 @@
 
 ---
 
-### 💡 知乎 (邀请码: 5K4A4PQV)
+### 💡 知乎 (邀请码: DU8682PB)
 
 **标题**: 我搭建了一个 DeepSeek API 中转服务，想听听大家的意见
 
@@ -71,7 +71,7 @@
 
 新用户注册送 100 点免费试用。
 
-邀请码：**5K4A4PQV**
+邀请码：**DU8682PB**
 注册地址：https://deepseek-api-service-production.up.railway.app/recharge
 
 欢迎反馈和建议！
@@ -80,7 +80,7 @@
 
 ---
 
-### 🎵 抖音 (邀请码: MV3ARQBK)
+### 🎵 抖音 (邀请码: L3BJC94W)
 
 **标题**: 程序员副业｜一行代码接入DeepSeek大模型🔥
 
@@ -95,14 +95,14 @@
 
 注册就送100点，¥10起充 💰
 
-邀请码：**MV3ARQBK**
+邀请码：**L3BJC94W**
 链接在主页/评论区 👇
 
 #程序员 #AI #DeepSeek #副业 #API
 
 ---
 
-### 🐟 闲鱼 (邀请码: G328M4GX)
+### 🐟 闲鱼 (邀请码: HPB84E9C)
 
 **标题**: DeepSeek API 充值卡/点数 自助下单 注册送100点
 
@@ -128,13 +128,13 @@ AI写作·翻译·代码生成 API 点数充值服务
 3. 管理员确认后点数自动到账
 
 🔗 注册地址：https://deepseek-api-service-production.up.railway.app/recharge
-🔑 邀请码：**G328M4GX**
+🔑 邀请码：**HPB84E9C**
 
 拍下后联系客服获取使用教程！
 
 ---
 
-### 💚 微信朋友圈 (邀请码: QHSCDRUL)
+### 💚 微信朋友圈 (邀请码: Q2R5PEJ8)
 
 **文案**:
 🚀 搞了个 DeepSeek API 服务
@@ -151,7 +151,7 @@ AI写作·翻译·代码生成 API 点数充值服务
 
 ---
 
-### 💬 QQ群 (邀请码: VTASWWU5)
+### 💬 QQ群 (邀请码: HFKQ45CA)
 
 **文案**:
 【群公告/推广】
@@ -159,7 +159,7 @@ AI写作·翻译·代码生成 API 点数充值服务
 🤖 DeepSeek API 服务上线啦！
 
 🔗 地址：https://deepseek-api-service-production.up.railway.app/recharge
-🔑 群友专属邀请码：**VTASWWU5**
+🔑 群友专属邀请码：**HFKQ45CA**
 
 ✨ 特色：
 • 7大AI端点（写作/翻译/摘要/对话/代码生成/审查/数据分析）
@@ -173,7 +173,7 @@ AI写作·翻译·代码生成 API 点数充值服务
 
 ---
 
-### 📺 B站 (邀请码: EFADKSW8)
+### 📺 B站 (邀请码: KWVR26XH)
 
 **标题**: 【开源分享】我写的DeepSeek API中转服务｜注册送100点｜7大AI能力
 
@@ -181,7 +181,7 @@ AI写作·翻译·代码生成 API 点数充值服务
 开源项目地址：https://github.com/zhicongzhao51-beep/deepseek-api
 
 直接使用：https://deepseek-api-service-production.up.railway.app/recharge
-邀请码：**EFADKSW8**
+邀请码：**KWVR26XH**
 
 技术栈：Node.js + Express + SQL.js (纯JS数据库)
 部署平台：Railway
@@ -199,7 +199,7 @@ AI写作·翻译·代码生成 API 点数充值服务
 
 ---
 
-### 🐦 Twitter/X (邀请码: 7RFT8PVC)
+### 🐦 Twitter/X (邀请码: MNWJ2C59)
 
 **文案** (英文为主):
 🇨🇳 DeepSeek API proxy service just launched!
@@ -218,18 +218,18 @@ Invite code: **7RFT8PVC**
 
 ---
 
-### 📝 CSDN (邀请码: HXRWUMZ9)
+### 📝 CSDN (邀请码: 8838NTGM)
 
 **标题**: DeepSeek API 中转服务搭建全记录｜Node.js + Railway 零成本部署
 
 **正文**:
 [技术分享文章，介绍项目架构和实现细节]
 
-文末福利：新用户注册送100点，邀请码 **HXRWUMZ9**
+文末福利：新用户注册送100点，邀请码 **8838NTGM**
 
 ---
 
-### 📢 公众号 (邀请码: TJ72B9E5)
+### 📢 公众号 (邀请码: 4L26BQMW)
 
 **标题**: 🎁 粉丝福利｜DeepSeek API 免费额度来了！注册送100点
 
@@ -248,7 +248,7 @@ DeepSeek 大模型 API 中转服务，注册即送 100 点免费额度！
 
 📌 使用方法：
 1. 打开 https://deepseek-api-service-production.up.railway.app/recharge
-2. 用邀请码 **TJ72B9E5** 注册
+2. 用邀请码 **4L26BQMW** 注册
 3. 获取 API Key
 4. 查阅 API 文档开始使用
 
